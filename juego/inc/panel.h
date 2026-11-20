@@ -26,12 +26,14 @@
 // Pin B de selección de fase del panel (HUB75 pin 10), conectado a PC11. Fuente: docs/conexiones.md.
 #define PIN_PANEL_B 11U
 
-// Bits que se desplazan por fase y por módulo: 4 bloques de 16. Fuente: docs/mapeo_pixeles.md.
-#define PANEL_BITS_POR_FASE 64U
-// Ancho del tablero en píxeles (columnas x). Etapa 1: un solo panel de 32 columnas. En la etapa 2 cambia aquí.
+// Bits que se desplazan por fase con los dos paneles encadenados: 64 por panel. Fuente: medición del Paso 11 (docs/mapeo_pixeles.md para el mapeo de un panel).
+#define PANEL_BITS_POR_FASE 128U
+// Bits que se desplazan por fase en un solo panel: 4 bloques de 16. Fuente: docs/mapeo_pixeles.md.
+#define PANEL_BITS_POR_MODULO 64U
+// Ancho del tablero en píxeles (columnas x): un panel de 32 columnas.
 #define PANEL_ANCHO 32U
-// Alto del tablero en píxeles (filas y). Etapa 1: un solo panel de 16 filas. En la etapa 2 cambia aquí.
-#define PANEL_ALTO 16U
+// Alto del tablero en píxeles (filas y): dos paneles de 16 filas apilados.
+#define PANEL_ALTO 32U
 // Número de fases del escaneo 1/4: cada fase enciende 4 filas (0, 1, 2, 3). Fuente: docs/mapeo_pixeles.md.
 #define PANEL_FASES 4U
 // Bits que se desplazan en cada bloque de 16 bits. Fuente: docs/mapeo_pixeles.md (bloque = bit / 16).

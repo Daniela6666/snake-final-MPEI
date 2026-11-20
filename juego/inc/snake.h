@@ -17,13 +17,13 @@ typedef struct {
 #define LONGITUD_INICIAL 3U
 // Dirección sin movimiento: la serpiente está quieta hasta que se presiona A, B, C o D.
 #define DIRECCION_QUIETO 0U
-// Dirección arriba: y disminuye (el botón A).
+// Dirección arriba: y disminuye (el botón D).
 #define DIRECCION_ARRIBA 1U
-// Dirección derecha: x aumenta (el botón B).
+// Dirección derecha: x aumenta (el botón C).
 #define DIRECCION_DERECHA 2U
-// Dirección abajo: y aumenta (el botón C).
+// Dirección abajo: y aumenta (el botón B).
 #define DIRECCION_ABAJO 3U
-// Dirección izquierda: x disminuye (el botón D).
+// Dirección izquierda: x disminuye (el botón A).
 #define DIRECCION_IZQUIERDA 4U
 // Pasos del juego que el veneno azul se queda en pantalla: 25 pasos (5 s a 200 ms por paso).
 #define VENENO_DURACION_PASOS 25U

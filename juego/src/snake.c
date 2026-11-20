@@ -219,21 +219,22 @@ void pedir_direccion(uint32_t botones)
         // Se marca que ya se sembró para no volver a sembrar en esta partida ni en las siguientes.
         aleatorio_sembrado = 1U;
     }
-    // Si el botón A está presionado, la dirección pedida es arriba.
+    // La asignación de cada botón a su dirección coincide con la posición física de los botones en el shield: A a la izquierda, B abajo, C a la derecha y D arriba.
+    // Si el botón A está presionado, la dirección pedida es izquierda.
     if ((botones & BOTON_A) != 0U) {
-        direccion_pedida = DIRECCION_ARRIBA;
+        direccion_pedida = DIRECCION_IZQUIERDA;
     }
-    // Si el botón B está presionado, la dirección pedida es derecha.
+    // Si el botón B está presionado, la dirección pedida es abajo.
     if ((botones & BOTON_B) != 0U) {
-        direccion_pedida = DIRECCION_DERECHA;
-    }
-    // Si el botón C está presionado, la dirección pedida es abajo.
-    if ((botones & BOTON_C) != 0U) {
         direccion_pedida = DIRECCION_ABAJO;
     }
-    // Si el botón D está presionado, la dirección pedida es izquierda.
+    // Si el botón C está presionado, la dirección pedida es derecha.
+    if ((botones & BOTON_C) != 0U) {
+        direccion_pedida = DIRECCION_DERECHA;
+    }
+    // Si el botón D está presionado, la dirección pedida es arriba.
     if ((botones & BOTON_D) != 0U) {
-        direccion_pedida = DIRECCION_IZQUIERDA;
+        direccion_pedida = DIRECCION_ARRIBA;
     }
 }
 

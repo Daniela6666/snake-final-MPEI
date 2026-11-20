@@ -87,22 +87,29 @@ void configurar_panel(void)
     configurar_salida_del_panel(PIN_PANEL_B);
 }
 
-// Dibuja una fase completa con los colores del framebuffer. Fórmula de docs/mapeo_pixeles.md:
-//   bloque = bit / 16, j = bit % 16
+// Dibuja una fase completa con los colores del framebuffer. Los 128 bits de la fase son 2 módulos de 64 bits:
+//   modulo = bit / 64: 0 = panel 2 (abajo, el más lejano, girado 180 grados), 1 = panel 1 (arriba, conectado a la placa).
+//   bit_en_modulo = bit % 64; bloque = bit_en_modulo / 16, j = bit_en_modulo % 16.
+// Posición dentro del panel, según docs/mapeo_pixeles.md:
 //   si j < 8:  x = 8 * bloque + (7 - j), y = fase        (de derecha a izquierda)
 //   si j >= 8: x = 8 * bloque + (j - 8), y = fase + 4    (de izquierda a derecha)
-// R2, G2 y B2 usan la fila y + 8.
+// R2, G2 y B2 usan la fila y + 8 dentro del panel.
+// Panel 2 girado 180 grados: columna = 31 - x, fila = 31 - y (y 31 - (y + 8) para R2, G2 y B2).
 static void dibujar_fase(uint32_t fase)
 {
-    // Se desplazan los 64 bits de la fase, uno por uno, con CLK.
+    // Se desplazan los 128 bits de la fase, uno por uno, con CLK.
     for (uint32_t bit = 0U; bit < PANEL_BITS_POR_FASE; bit++) {
-        // Bloque de 16 bits al que pertenece el bit (0 a 3).
-        uint32_t bloque = bit / PANEL_BITS_POR_BLOQUE;
+        // Módulo al que pertenece el bit: 0 = panel 2 (abajo), 1 = panel 1 (arriba).
+        uint32_t modulo = bit / PANEL_BITS_POR_MODULO;
+        // Posición del bit dentro de su módulo (0 a 63).
+        uint32_t bit_en_modulo = bit % PANEL_BITS_POR_MODULO;
+        // Bloque de 16 bits al que pertenece el bit dentro del módulo (0 a 3).
+        uint32_t bloque = bit_en_modulo / PANEL_BITS_POR_BLOQUE;
         // Posición del bit dentro de su bloque (0 a 15).
-        uint32_t j = bit % PANEL_BITS_POR_BLOQUE;
-        // Columna del píxel de la mitad de arriba que corresponde a este bit.
+        uint32_t j = bit_en_modulo % PANEL_BITS_POR_BLOQUE;
+        // Columna del píxel de la mitad de arriba dentro del panel.
         uint32_t x;
-        // Fila del píxel de la mitad de arriba que corresponde a este bit.
+        // Fila del píxel de la mitad de arriba dentro del panel.
         uint32_t y;
         // Mitad j < 8: las columnas van de derecha a izquierda y la fila es la de la fase.
         if (j < PANEL_COLUMNAS_POR_BLOQUE) {
@@ -113,14 +120,29 @@ static void dibujar_fase(uint32_t fase)
             x = PANEL_COLUMNAS_POR_BLOQUE * bloque + (j - PANEL_COLUMNAS_POR_BLOQUE);
             y = fase + PANEL_SEPARACION_FILAS;
         }
-        // datos: bits 0 a 2 = R1, G1, B1 (fila y); bits 3 a 5 = R2, G2, B2 (fila y + 8), desplazados 3 posiciones.
-        uint32_t datos = framebuffer[y][x] | (framebuffer[y + PANEL_FILAS_MITAD_SUPERIOR][x] << PANEL_DESPLAZAMIENTO_MITAD_INFERIOR);
+        // Columna y filas en el tablero completo de 32x32.
+        uint32_t columna;
+        uint32_t fila_superior;
+        uint32_t fila_inferior;
+        // Panel 1 (arriba): sin giro, la fila de abajo es la fila de arriba + 8.
+        if (modulo == 1U) {
+            columna = x;
+            fila_superior = y;
+            fila_inferior = y + PANEL_FILAS_MITAD_SUPERIOR;
+        // Panel 2 (abajo, girado 180 grados): la columna y las filas se cuentan desde el otro lado.
+        } else {
+            columna = (PANEL_ANCHO - 1U) - x;
+            fila_superior = (PANEL_ALTO - 1U) - y;
+            fila_inferior = (PANEL_ALTO - 1U) - (y + PANEL_FILAS_MITAD_SUPERIOR);
+        }
+        // datos: bits 0 a 2 = R1, G1, B1 (fila superior); bits 3 a 5 = R2, G2, B2 (fila inferior), desplazados 3 posiciones.
+        uint32_t datos = framebuffer[fila_superior][columna] | (framebuffer[fila_inferior][columna] << PANEL_DESPLAZAMIENTO_MITAD_INFERIOR);
         // Se desplazan los 6 bits de color de este píxel.
         desplazar_bit(datos);
     }
     // OE apagado mientras cambian LAT y la fase: así no se ve basura durante el cambio.
     escribir_pin(GPIOC, PIN_PANEL_OE, NIVEL_OE_APAGADO);
-    // LAT en 1: el latch pasa los 64 bits desplazados a la salida. Va después de desplazar todos los bits.
+    // LAT en 1: el latch pasa los 128 bits desplazados a la salida. Va después de desplazar todos los bits.
     escribir_pin(GPIOC, PIN_PANEL_LAT, 1U);
     // LAT en 0: termina el pulso de latch.
     escribir_pin(GPIOC, PIN_PANEL_LAT, 0U);

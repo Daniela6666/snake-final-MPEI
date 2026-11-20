@@ -18,7 +18,7 @@ int main(void)
     // Se enciende TIM3: desde aquí, una interrupción cada 1 ms dibuja una fase del framebuffer en el panel.
     iniciar_refresco_panel();
 
-    // Se configuran los seis botones como entradas con pull-up.
+    // Se configuran los cinco botones del shield y el botón azul de la placa como entradas con pull-up.
     configurar_botones();
     // El temporizador de movimiento cuenta desde 0 con un periodo de 200 ms.
     iniciar_temporizador_movimiento(PERIODO_MOVIMIENTO_MS);
@@ -28,8 +28,8 @@ int main(void)
     while (1) {
         // Los botones se leen en cada vuelta del bucle, no solo cuando vence el temporizador, para no perder pulsaciones cortas.
         uint32_t botones = leer_botones();
-        // F reinicia la partida (mientras se mantiene presionada); si no, los botones A a D piden una dirección.
-        if ((botones & BOTON_F) != 0U) {
+        // El botón azul de la placa reinicia la partida (mientras se mantiene presionado); si no, los botones A a D piden una dirección.
+        if ((botones & BOTON_REINICIO) != 0U) {
             iniciar_juego();
         } else {
             pedir_direccion(botones);

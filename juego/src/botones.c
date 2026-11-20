@@ -10,8 +10,8 @@
 #define PIN_BOTON_D 4U
 // Número del pin del botón E del shield: PB10, activo en bajo (presionado = 0).
 #define PIN_BOTON_E 10U
-// Número del pin del botón F del shield: PA8, activo en bajo (presionado = 0).
-#define PIN_BOTON_F 8U
+// Número del pin del botón azul de la placa: PC13, activo en bajo (presionado = 0).
+#define PIN_BOTON_REINICIO 13U
 
 // Configura un pin como entrada con pull-up interno. El pin queda en 1 mientras el botón no está presionado.
 static void configurar_entrada_con_pull_up(RegistrosGPIO *puerto, uint32_t pin)
@@ -44,8 +44,8 @@ void configurar_botones(void)
     configurar_entrada_con_pull_up(GPIOB, PIN_BOTON_D);
     // Botón E (PB10) en el puerto B.
     configurar_entrada_con_pull_up(GPIOB, PIN_BOTON_E);
-    // Botón F (PA8) en el puerto A.
-    configurar_entrada_con_pull_up(GPIOA, PIN_BOTON_F);
+    // Botón azul de la placa (PC13) en el puerto C.
+    configurar_entrada_con_pull_up(GPIOC, PIN_BOTON_REINICIO);
 }
 
 uint32_t leer_botones(void)
@@ -77,10 +77,10 @@ uint32_t leer_botones(void)
         // Se pone en 1 el bit del botón E.
         botones |= BOTON_E;
     }
-    // Botón F (PA8): presionado = 0.
-    if (leer_pin(GPIOA, PIN_BOTON_F) == 0U) {
-        // Se pone en 1 el bit del botón F.
-        botones |= BOTON_F;
+    // Botón azul de la placa (PC13): presionado = 0.
+    if (leer_pin(GPIOC, PIN_BOTON_REINICIO) == 0U) {
+        // Se pone en 1 el bit del botón de reinicio.
+        botones |= BOTON_REINICIO;
     }
     // Se devuelve el valor con un bit por cada botón presionado.
     return botones;

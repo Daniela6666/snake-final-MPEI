@@ -13,12 +13,12 @@
 #define BOTON_D (1U << 3)
 // Bit del botón E en el valor que devuelve leer_botones (1 = presionado).
 #define BOTON_E (1U << 4)
-// Bit del botón F en el valor que devuelve leer_botones (1 = presionado).
-#define BOTON_F (1U << 5)
+// Bit del botón de reinicio en el valor que devuelve leer_botones (1 = presionado): el botón azul de la placa, PC13.
+#define BOTON_REINICIO (1U << 5)
 
-// Configura los seis botones del shield como entradas con pull-up interno.
+// Configura los cinco botones del shield y el botón azul de la placa como entradas con pull-up interno.
 void configurar_botones(void);
-// Devuelve un valor con un bit por cada botón presionado (BOTON_A a BOTON_F). Un bit en 1 = botón presionado.
+// Devuelve un valor con un bit por cada botón presionado (BOTON_A a BOTON_E y BOTON_REINICIO). Un bit en 1 = botón presionado.
 uint32_t leer_botones(void);
 
 #endif

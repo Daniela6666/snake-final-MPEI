@@ -17,6 +17,7 @@ Documento para que Daniela y su compañero estudien para la sustentación. Lo ma
 - [Paso 8 — Snake básico (primer avance para el profesor)](#paso-8--snake-básico-primer-avance-para-el-profesor)
 - [Paso 9 — Números aleatorios (LFSR) y veneno azul](#paso-9--números-aleatorios-lfsr-y-veneno-azul)
 - [Paso 10 — Puntaje y fin de juego](#paso-10--puntaje-y-fin-de-juego)
+- [Paso 11 — Segundo panel (tablero de 32×32)](#paso-11--segundo-panel-tablero-de-3232)
 - Los pasos siguientes se agregan aquí a medida que se hacen (ver `PLAN.md`).
 - [Resumen de sustentación](#resumen-de-sustentación)
 
@@ -125,6 +126,11 @@ Cada término se define la primera vez que aparece, en una frase.
 | Separar dígitos con `/` y `%` | `valor % 10` da el último dígito y `valor / 10` (división entera) lo descarta; repetido, saca todos los dígitos de derecha a izquierda. |
 | Centrar un dibujo | Poner su esquina superior izquierda en (ancho del panel − ancho del dibujo) / 2 y (alto del panel − alto del dibujo) / 2; la división entera redondea hacia abajo. |
 | Pantalla de fin de juego | Lo que `terminar_partida` deja en el panel al terminar la partida: todo borrado y solo el puntaje en blanco. |
+| Cadena de paneles | Paneles conectados en serie (OUT del primero a IN del segundo): forman un solo registro de desplazamiento largo; los primeros bits que se envían terminan en el panel más lejano. |
+| Módulo (panel) | Un solo panel de la cadena; `PANEL_BITS_POR_MODULO` son los 64 bits que se desplazan por fase en un panel. |
+| Panel girado 180° | Panel montado de cabeza: su mapeo interno es el mismo y visto desde afuera sus coordenadas locales se convierten con `31 − x` y `31 − y`. |
+| Muestreo con el depurador | Leer registros o variables de la placa con `openocd` (SWD, `mem2array`, `dump_image`) sin detener el programa, para ver su estado real. |
+| Acoplamiento de ruido | Señal de un cable (por ejemplo CLK del panel) que se «cuela» en otra línea cercana o en una entrada con pull-up débil y la hace leer valores falsos. |
 
 ## Plantilla de sección de paso
 Cada paso nuevo copia esta estructura:
@@ -1933,6 +1939,7 @@ Configurar los seis botones del shield (A a F) como entradas con pull-up interno
 - `main.c` (modificado): seis constantes de pin, seis bloques de configuración y un bucle que enciende el LED si hay algún botón presionado. Ya no hace parpadear el LED.
 - Las versiones anteriores de `registros_f446.h`, `gpio_config.*` y `main.c` se conservan en el Paso 1 (pieza 4) y en el Paso 2, con una nota (política de la guía: opción a).
 - El Paso 4 cambia después `gpio_config.*` y `main.c`: los que aparecen en esta sección son las **versiones del Paso 3**.
+- El Paso 11 quita el botón F (PA8) y pasa su bit a `BOTON_REINICIO`, el botón azul de la placa (PC13): el código con `BOTON_F` que aparece en esta sección es la **versión del Paso 3**.
 
 ### Concepto de clase que se usa
 Entradas digitales de GPIO (`MODER`, `PUPDR`, `IDR`) y pull-up interno, como el ejemplo `3-input-butt` del profesor, ahora con seis botones en dos puertos. No se agrega ningún concepto nuevo de hardware: se reutiliza `configurar_pin` y `leer_pin` del Paso 1.
@@ -2490,6 +2497,7 @@ Encender un primer píxel del panel P10 usando solo GPIO normal, sin interrupcio
 - `src/gpio_config.c` (modificado): `escribir_pin` usa `BSRR`.
 - `main.c` (reescrito): ya no tiene LED ni botones; configura el panel y envía un píxel. Las versiones anteriores quedan en el Paso 3 y en el Paso 2.
 - El Paso 5 cambia después `registros_f446.h`, `panel.h`, `panel.c` y `main.c`: los que aparecen en esta sección son las **versiones del Paso 4**.
+- El Paso 11 cambia `panel.h` y `panel.c` (tablero de 32×32 y 128 bits por fase): los que aparecen en esta sección son las **versiones del Paso 4**.
 
 ### Concepto de clase que se usa
 Salidas digitales de GPIO (`MODER`, `OSPEEDR`, `BSRR`), el reloj del puerto C y el manejo de una señal con flancos (CLK, LAT). Es el primer uso del panel HUB75 del proyecto; no viene de un ejemplo del profesor, sino de lo medido en el repositorio anterior (`docs/conexiones.md` y `docs/mapeo_pixeles.md`).
@@ -2913,6 +2921,7 @@ Dejar de enviar la imagen una sola vez (Paso 4) y refrescar el panel de forma au
 - `src/panel.c` (modificado): framebuffer, `dibujar_fase`, `encender_pixel`, `iniciar_refresco_panel` y `TIM3_IRQHandler`.
 - `main.c` (reescrito): cuatro funciones de dibujo y la secuencia de pruebas. Las versiones anteriores de estos archivos quedan en los pasos 1 a 4, con notas.
 - El Paso 6 cambia después `panel.h` y reescribe `main.c`: los que aparecen en esta sección son las **versiones del Paso 5**.
+- El Paso 11 cambia `panel.h` y `panel.c` (tablero de 32×32 y 128 bits por fase): los que aparecen en esta sección son las **versiones del Paso 5**.
 
 ### Concepto de clase que se usa
 Temporizador de propósito general (TIM3: prescaler, auto-recarga y evento de actualización), interrupciones con el NVIC, `volatile` en un dato compartido entre `main` y la interrupción, y la separación entre quien dibuja (la interrupción refresca el panel) y quien decide qué se dibuja (`main`).
@@ -3639,6 +3648,7 @@ Tener funciones para dibujar sobre el framebuffer sin tocar el hardware: borrar 
 - `src/panel.c` no cambia: «poner un píxel con 7 colores» es `encender_pixel`, que ya aceptaba cualquier valor de 3 bits.
 - El Paso 7 reescribe `main.c`: el que aparece en esta sección es la **versión del Paso 6**.
 - El Paso 10 agrega a `graficos.h` y `graficos.c` tres constantes y `dibujar_numero`: los que aparecen en esta sección son las **versiones del Paso 6**.
+- El Paso 11 cambia `panel.h` y `panel.c` (tablero de 32×32 y 128 bits por fase): los que aparecen en esta sección son las **versiones del Paso 6**.
 
 ### Concepto de clase que se usa
 Arreglos constantes en FLASH (`const`, `.rodata`), operaciones de bits (desplazar y enmascarar) y capas de software: `panel.c` maneja el hardware y el framebuffer, y `graficos.c` solo dibuja sobre el framebuffer a través de `encender_pixel`.
@@ -4040,6 +4050,7 @@ Mover un punto verde por el panel con los botones A a D, con un **temporizador d
 - `main.c` (reescrito): el punto, su dirección y el bucle que lee los botones. Las pantallas de prueba del Paso 6 quedan en su sección.
 - `src/graficos.c` y `src/panel.c` no cambian. `graficos.c` se sigue compilando aunque `main` ya no lo use (el Makefile compila `src/*.c`); ocupa unos 382 bytes y lo usará el puntaje del paso 10.
 - El Paso 8 reescribe `main.c` y agrega `obtener_milisegundos` a `system_config.*`: los que aparecen en esta sección son las **versiones del Paso 7**.
+- El Paso 11 quita el botón F (PA8) y pasa su bit a `BOTON_REINICIO`, el botón azul de la placa (PC13): el código con `BOTON_F` que aparece en esta sección es la **versión del Paso 7**.
 
 ### Concepto de clase que se usa
 SysTick con interrupción y un temporizador de software (struct con contador, periodo y bandera), como el ejemplo `8-Interrupts-SysTick` del profesor (solo el patrón, sin copiar código y sin CMSIS). También: entradas con pull-up, lectura de botones por sondeo (*polling*), `volatile` y una máscara con un bit por botón.
@@ -4582,6 +4593,8 @@ Convertir el punto móvil en el primer Snake jugable: una serpiente verde de 3 p
 - `main.c` (modificado): el bucle ahora llama al juego en vez de mover un punto.
 - `src/botones.c`, `src/panel.c` y `src/graficos.c` no cambian. `graficos.c` ya se usa: `borrar_pantalla`.
 - El Paso 9 cambia después `snake.h` y `snake.c` (y un comentario de `system_config.h`): los que aparecen en esta sección son las **versiones del Paso 8**.
+- El Paso 11 quita el botón F (PA8) y pasa su bit a `BOTON_REINICIO`, el botón azul de la placa (PC13): el código con `BOTON_F` que aparece en esta sección es la **versión del Paso 8**.
+- El Paso 11 cambia qué dirección pide cada botón de A a D en `pedir_direccion` (y los comentarios de `snake.h`): el código de `snake.c` que aparece en esta sección es la **versión del Paso 8**.
 
 ### Concepto de clase que se usa
 Arreglos y structs, índices con módulo (arreglo circular), `static` para datos privados de un módulo, reutilización de la base de tiempo (SysTick y temporizador de software) y de los botones. Es el paso con más lógica de programa y menos registros.
@@ -5224,6 +5237,8 @@ Reemplazar el cálculo de la posición de la manzana con milisegundos (que la de
 - `inc/system_config.h` (modificado): solo el comentario de `obtener_milisegundos`.
 - `main.c` no cambia (se restauró desde el commit del Paso 8, porque la copia de trabajo tenía el código del punto del Paso 7).
 - El Paso 10 cambia después `snake.c` (agrega `terminar_partida`): el que aparece en esta sección es la **versión del Paso 9**.
+- El Paso 11 quita el botón F: el reinicio de la partida pasa al botón azul de la placa (PC13).
+- El Paso 11 cambia qué dirección pide cada botón de A a D en `pedir_direccion` (y los comentarios de `snake.h`): el código de `snake.c` que aparece en esta sección es la **versión del Paso 9**.
 
 ### Concepto de clase que se usa
 Generadores pseudoaleatorios con registros de desplazamiento y realimentación (LFSR), operaciones de bits (XOR, desplazamientos) y máquinas de estado simples (veneno escondido o visible con un contador de pasos).
@@ -5857,6 +5872,8 @@ Con este paso el juego completo funciona en **un solo panel de 32×16**: es el h
 - `src/snake.c` (modificado): la función `terminar_partida` y su uso en los 7 sitios donde antes se escribía `juego_terminado = 1U;`.
 - `inc/snake.h` y `main.c` no cambian.
 - Este paso cambia `graficos.h`, `graficos.c` y `snake.c` respecto a los pasos 6 y 9: los que aparecen en esas secciones son las **versiones de sus pasos**; el código de esta sección es el vigente.
+- El Paso 11 quita el botón F: el reinicio de la partida pasa al botón azul de la placa (PC13).
+- El Paso 11 cambia qué dirección pide cada botón de A a D en `pedir_direccion` (y los comentarios de `snake.h`): el código de `snake.c` que aparece en esta sección es la **versión del Paso 10**.
 
 ### Concepto de clase que se usa
 Aritmética entera con `/` y `%` para separar dígitos, constantes con `#define` para que el tamaño del tablero y de la fuente se calculen en un solo lugar, funciones `static` que reúnen una acción repetida, y reutilización de la capa gráfica (`dibujar_numero` usa `dibujar_digito`, que usa `encender_pixel`).
@@ -6482,6 +6499,1237 @@ Pedido aparte de Daniela: «baja la intensidad de la pantalla en general». El a
    `2345`, porque el bucle solo da 4 vueltas y por eso solo saca los 4 últimos dígitos. Con este tablero no ocurre (el máximo es ~509).
 5. ¿Por qué `terminar_partida` borra la pantalla antes de dibujar el número?
    Porque `dibujar_numero` (como `dibujar_digito`) solo enciende píxeles y no apaga los demás. Sin `borrar_pantalla`, el número quedaría encima de la serpiente y de la manzana (la opción 1b, que Daniela no eligió).
+
+## Paso 11 — Segundo panel (tablero de 32×32)
+
+### Objetivo
+Pasar del tablero de 32×16 (un panel) al de **32×32** con un segundo panel encadenado debajo del primero. El juego es el mismo; cambia el tamaño del tablero (`PANEL_ALTO` pasa de 16 a 32, así que el cuerpo de la serpiente puede tener hasta 1024 segmentos) y la forma de enviar cada fase al panel: ahora son **128 bits por fase** en lugar de 64.
+
+En el camino aparecieron dos problemas de hardware (ruido en el botón F y cableado del shield) que obligaron a **quitar el botón F**, a **usar el botón azul de la placa como reinicio** y a **cambiar qué dirección pide cada botón**.
+
+### Archivos creados o modificados
+- `inc/panel.h` y `src/panel.c` (modificados): `PANEL_ALTO` 32, `PANEL_BITS_POR_FASE` 128, `PANEL_BITS_POR_MODULO` 64 y `dibujar_fase` reescrita con el reparto entre los dos paneles.
+- `inc/botones.h` y `src/botones.c` (modificados): se quita el botón F (PA8) y el bit 5 pasa a ser `BOTON_REINICIO`, el botón azul de la placa (PC13).
+- `main.c` (modificado): reinicia con `BOTON_REINICIO`.
+- `src/snake.c` e `inc/snake.h` (modificados): `pedir_direccion` asigna otras direcciones a los botones A a D, y los comentarios de `DIRECCION_*` cambian.
+- `.vscode/c_cpp_properties.json` (nuevo, **no se versiona**: `.vscode/` está en `.gitignore`): le dice al editor dónde están los headers (`-Iinc`) para que no marque falsos errores. No afecta la compilación.
+- Los pasos anteriores mostraban versiones anteriores de estos archivos: los que aparecen en esas secciones son las **versiones de sus pasos** (ver las notas en cada una).
+
+### Concepto de clase que se usa
+Cadena de registros de desplazamiento (dos paneles son un solo registro largo), transformaciones de coordenadas (giro de 180°), lectura de registros de un periférico con el depurador (SWD) sin detener el programa, y entradas con pull-up interno frente al ruido eléctrico.
+
+**Cómo se hizo:** el agente principal resolvió con Daniela las decisiones (ver más abajo); el subagente `programador` (Haiku) escribió el código en cuatro rondas (programa de medición, mapeo de 32×32, cambio del botón de reinicio y remapeo de A a D); el subagente `revisor` (Sonnet) revisó cada ronda y no cambió nada; el agente principal leyó cada diff, recompiló, grabó la placa y diagnosticó el problema de los botones leyendo los registros con `openocd`. Daniela hizo las mediciones en los paneles y revisó el cableado.
+
+**Fuentes:** no hay datos nuevos del RM0390. El mapeo del panel 2 es una **medición de Daniela** (ver más abajo) y las direcciones de los registros GPIO que se leyeron con el depurador (IDR en el desplazamiento `0x10`) son las ya definidas en `inc/registros_f446.h`.
+
+### Cómo funciona la cadena de dos paneles
+Los dos paneles forman un **único registro de desplazamiento de 128 pasos** por cada color: la salida del panel 1 (OUT) va a la entrada del panel 2 (IN).
+- En cada flanco de subida de CLK, cada paso copia lo que tenía el anterior, y el primer paso toma el valor nuevo de los pines de color.
+- El **primer bit que se envía (el bit 0) se va empujando hasta el panel más lejano** (el panel 2, abajo). El **último (el bit 127) queda en el panel conectado a la placa** (el panel 1, arriba).
+- Por eso, de los 128 bits de una fase, los **bits 0 a 63 son del panel 2** y los **bits 64 a 127 del panel 1**.
+- Con solo 64 bits por fase (el código del Paso 10), Daniela vio la imagen **duplicada** en el panel 2. La explicación probable es que el panel 2 recibía lo que salía del panel 1 en cada desplazamiento; esa explicación **no se comprobó**.
+
+### Cómo está puesto el panel 2
+El panel 2 está **debajo** del panel 1 y **girado 180°** (de cabeza). Como es igual al panel 1, tiene el mismo mapeo interno; visto desde afuera queda girado:
+
+| Panel | Bits de la fase | Columna en el tablero | Fila de R1G1B1 | Fila de R2G2B2 |
+|---|---|---|---|---|
+| Panel 1 (arriba) | 64 a 127 | `x` | `y` | `y + 8` |
+| Panel 2 (abajo, girado 180°) | 0 a 63 | `31 − x` | `31 − y` | `31 − (y + 8)`, o sea `23 − y` |
+
+Aquí `x` e `y` son las coordenadas dentro del panel, calculadas con la misma fórmula de siempre (`bloque`, `j`, y la fila `fase` o `fase + 4`).
+
+### Medición del mapeo del panel 2 (Paso 11a)
+Se escribió un programa temporal (no está en el repo) que enciende un solo bit de la cadena de 128, con **G1 (verde, mitad de arriba) y R2 (rojo, mitad de abajo)** a la vez. Los botones A y B cambian el bit en ±1, E y F en ±16 y C y D cambian la fase. Daniela leyó en qué píxel aparecía cada punto, con coordenadas (columna, fila) sobre el tablero de 32×32 visto de frente (columna 0 a la izquierda, fila 0 arriba del panel 1):
+
+| Bit | Fase | Verde medido | Rojo medido | Predicción de la fórmula |
+|---|---|---|---|---|
+| 0 | 0 | (24, 31) | (24, 23) | (24, 31) y (24, 23) |
+| 16 | 0 | (16, 31) | (16, 23) | (16, 31) y (16, 23) |
+
+- **Por qué coinciden:** el bit 0 es `bloque = 0`, `j = 0`, que en el panel da `x = 7`, `y = 0` y, para R2, `y + 8 = 8`. Girando 180° queda columna `31 − 7 = 24`, fila `31 − 0 = 31` para el verde y `31 − 8 = 23` para el rojo. El bit 16 es `bloque = 1`, `j = 0`: `x = 8 + 7 = 15`, columna `31 − 15 = 16`.
+- **Qué no se midió:** los bits 8 (la otra mitad de un bloque, `fase + 4`), las fases 1 a 3 y el panel 1 dentro de la cadena. Un primer intento de medir el bit 8 falló por un **rebote en un cable**, y Daniela decidió **no repetir las mediciones** (opción a) y comprobar todo el mapeo de una vez con una pantalla de prueba (ver «Cómo se probó»).
+
+### Código explicado
+
+`inc/panel.h`
+
+```c
+#ifndef PANEL_H
+#define PANEL_H
+
+#include "gpio_config.h"
+
+// Pin R1 del panel (HUB75 pin 1), conectado a PC0. Fuente: docs/conexiones.md.
+#define PIN_PANEL_R1 0U
+// Pin G1 del panel (HUB75 pin 2), conectado a PC1. Fuente: docs/conexiones.md.
+#define PIN_PANEL_G1 1U
+// Pin B1 del panel (HUB75 pin 3), conectado a PC2. Fuente: docs/conexiones.md.
+#define PIN_PANEL_B1 2U
+// Pin R2 del panel (HUB75 pin 5), conectado a PC3. Fuente: docs/conexiones.md.
+#define PIN_PANEL_R2 3U
+// Pin G2 del panel (HUB75 pin 6), conectado a PC4. Fuente: docs/conexiones.md.
+#define PIN_PANEL_G2 4U
+// Pin B2 del panel (HUB75 pin 7), conectado a PC5. Fuente: docs/conexiones.md.
+#define PIN_PANEL_B2 5U
+// Pin OE del panel (HUB75 pin 15), conectado a PC6. Fuente: docs/conexiones.md.
+#define PIN_PANEL_OE 6U
+// Pin LAT del panel (HUB75 pin 14), conectado a PC7. Fuente: docs/conexiones.md.
+#define PIN_PANEL_LAT 7U
+// Pin CLK del panel (HUB75 pin 13), conectado a PC8. Fuente: docs/conexiones.md.
+#define PIN_PANEL_CLK 8U
+// Pin A del panel (HUB75 pin 9), conectado a PC10. Fuente: docs/conexiones.md.
+#define PIN_PANEL_A 10U
+// Pin B de selección de fase del panel (HUB75 pin 10), conectado a PC11. Fuente: docs/conexiones.md.
+#define PIN_PANEL_B 11U
+
+// Bits que se desplazan por fase con los dos paneles encadenados: 64 por panel. Fuente: medición del Paso 11 (docs/mapeo_pixeles.md para el mapeo de un panel).
+#define PANEL_BITS_POR_FASE 128U
+// Bits que se desplazan por fase en un solo panel: 4 bloques de 16. Fuente: docs/mapeo_pixeles.md.
+#define PANEL_BITS_POR_MODULO 64U
+// Ancho del tablero en píxeles (columnas x): un panel de 32 columnas.
+#define PANEL_ANCHO 32U
+// Alto del tablero en píxeles (filas y): dos paneles de 16 filas apilados.
+#define PANEL_ALTO 32U
+// Número de fases del escaneo 1/4: cada fase enciende 4 filas (0, 1, 2, 3). Fuente: docs/mapeo_pixeles.md.
+#define PANEL_FASES 4U
+// Bits que se desplazan en cada bloque de 16 bits. Fuente: docs/mapeo_pixeles.md (bloque = bit / 16).
+#define PANEL_BITS_POR_BLOQUE 16U
+// Columnas que ocupa cada mitad de un bloque (8 para la mitad j < 8 y 8 para la mitad j >= 8). Fuente: docs/mapeo_pixeles.md.
+#define PANEL_COLUMNAS_POR_BLOQUE 8U
+// Separación en filas entre la mitad j < 8 y la mitad j >= 8 de un bloque: y = fase + 4. Fuente: docs/mapeo_pixeles.md.
+#define PANEL_SEPARACION_FILAS 4U
+// Filas que hay entre la mitad de arriba y la de abajo del panel: R2, G2 y B2 suman 8 a y. Fuente: docs/mapeo_pixeles.md.
+#define PANEL_FILAS_MITAD_SUPERIOR 8U
+// Posición del bit de los colores de abajo (R2, G2, B2) dentro de datos: R2 es el bit 3. Fuente: desplazar_bit en src/panel.c.
+#define PANEL_DESPLAZAMIENTO_MITAD_INFERIOR 3U
+
+// Color negro: los tres bits de color en 0 (el pixel está apagado).
+#define COLOR_NEGRO 0U
+// Color rojo: solo el bit R (bit 0) en 1.
+#define COLOR_ROJO 1U
+// Color verde: solo el bit G (bit 1) en 1.
+#define COLOR_VERDE 2U
+// Color azul: solo el bit B (bit 2) en 1.
+#define COLOR_AZUL 4U
+// Color amarillo: bits R (bit 0) y G (bit 1) en 1, es decir, rojo + verde.
+#define COLOR_AMARILLO 3U
+// Color magenta: bits R (bit 0) y B (bit 2) en 1, es decir, rojo + azul.
+#define COLOR_MAGENTA 5U
+// Color cian: bits G (bit 1) y B (bit 2) en 1, es decir, verde + azul.
+#define COLOR_CIAN 6U
+// Color blanco: los tres bits R, G y B en 1.
+#define COLOR_BLANCO 7U
+
+// Nivel de OE que enciende el panel: 0 (OE activo en bajo). Confirmado en la placa (2026-11-09).
+// Si otro panel no enciende, se intercambian este valor y NIVEL_OE_APAGADO.
+#define NIVEL_OE_ENCENDIDO 0U
+// Nivel de OE que apaga el panel: 1, el opuesto de NIVEL_OE_ENCENDIDO. Confirmado en la placa (2026-11-09).
+#define NIVEL_OE_APAGADO 1U
+
+// Configura los pines del panel como salidas y los deja en un estado seguro.
+void configurar_panel(void);
+// Enciende TIM3 para que interrumpa cada 1 ms y el panel se refresque solo.
+void iniciar_refresco_panel(void);
+// Guarda el color (uno de los COLOR_*) del píxel (x, y) en el framebuffer.
+void encender_pixel(uint32_t x, uint32_t y, uint32_t color);
+
+#endif
+```
+
+Lo que cambió respecto al Paso 10 (el resto se explica en los pasos 4 a 6):
+- `PANEL_BITS_POR_FASE` pasa de 64 a **128**: 64 bits por panel.
+- `PANEL_BITS_POR_MODULO 64U` es nueva: los bits de un solo panel. Sirve para separar los dos paneles de la cadena. «Módulo» es un panel.
+- `PANEL_ALTO` pasa de 16 a **32**: dos paneles de 16 filas apilados. `PANEL_ANCHO` sigue en 32. Con esto cambian solas todas las cuentas que usan constantes: el framebuffer (32×32), `borrar_pantalla`, `CAPACIDAD_CUERPO` (1024), el centro de la serpiente (16, 16) y la posición del puntaje.
+
+`src/panel.c`
+
+```c
+#include "panel.h"
+
+// Divisor de TIM3: 84 MHz / (83 + 1) = 1 MHz, es decir, el contador avanza una cuenta cada 1 µs.
+#define TIM3_PRESCALER 83U
+// Valor de recarga de TIM3: 1 MHz / (999 + 1) = 1 kHz, es decir, una interrupción cada 1 ms.
+#define TIM3_AUTORRECARGA 999U
+
+// Imagen del tablero: un color por píxel, indexado [y][x]. Los bits 0 a 2 son R, G y B.
+// volatile porque la interrupción de TIM3 lee este arreglo mientras main lo escribe.
+// Está en .bss, así que empieza en 0 (COLOR_NEGRO).
+static volatile uint8_t framebuffer[PANEL_ALTO][PANEL_ANCHO];
+// Fase que se dibuja en la siguiente interrupción de TIM3. Solo la usa la interrupción, por eso no necesita volatile.
+static uint32_t fase_actual = 0U;
+
+// Configura un pin del panel (puerto C) como salida push-pull, sin resistencia, con velocidad alta.
+static void configurar_salida_del_panel(uint32_t pin)
+{
+    // Datos de configuración del pin del panel.
+    ConfiguracionPin configuracion;
+    // Modo salida: el microcontrolador maneja el pin y saca el nivel que se le escriba.
+    configuracion.modo = MODO_SALIDA;
+    // Número del pin dentro del puerto C.
+    configuracion.pin = pin;
+    // Sin pull-up ni pull-down: el pin lo domina solo la salida.
+    configuracion.resistencia = RESISTENCIA_NINGUNA;
+    // Velocidad alta: los flancos de CLK y LAT tienen que ser rápidos.
+    configuracion.velocidad = VELOCIDAD_ALTA;
+    // AF0: no se usa, el pin no es de función alterna.
+    configuracion.funcion_alterna = 0U;
+    // Se escribe la configuración en el puerto C.
+    configurar_pin(GPIOC, configuracion);
+}
+
+// Desplaza un bit por los seis colores. datos lleva en sus bits 0 a 5 los valores de R1, G1, B1, R2, G2 y B2.
+static void desplazar_bit(uint32_t datos)
+{
+    // R1 sale por PC0: se toma el bit 0 de datos (el desplazamiento es el número del pin).
+    escribir_pin(GPIOC, PIN_PANEL_R1, (datos >> PIN_PANEL_R1) & 1U);
+    // G1 sale por PC1: se toma el bit 1 de datos.
+    escribir_pin(GPIOC, PIN_PANEL_G1, (datos >> PIN_PANEL_G1) & 1U);
+    // B1 sale por PC2: se toma el bit 2 de datos.
+    escribir_pin(GPIOC, PIN_PANEL_B1, (datos >> PIN_PANEL_B1) & 1U);
+    // R2 sale por PC3: se toma el bit 3 de datos.
+    escribir_pin(GPIOC, PIN_PANEL_R2, (datos >> PIN_PANEL_R2) & 1U);
+    // G2 sale por PC4: se toma el bit 4 de datos.
+    escribir_pin(GPIOC, PIN_PANEL_G2, (datos >> PIN_PANEL_G2) & 1U);
+    // B2 sale por PC5: se toma el bit 5 de datos.
+    escribir_pin(GPIOC, PIN_PANEL_B2, (datos >> PIN_PANEL_B2) & 1U);
+    // CLK en 1: el panel toma el bit de los pines de color en este flanco de subida.
+    escribir_pin(GPIOC, PIN_PANEL_CLK, 1U);
+    // CLK en 0: deja CLK listo para el siguiente bit.
+    escribir_pin(GPIOC, PIN_PANEL_CLK, 0U);
+}
+
+// Configura los pines del panel. Primero se dejan en un nivel seguro y después pasan a salida.
+void configurar_panel(void)
+{
+    // Se enciende el reloj del puerto C antes de escribir sus registros.
+    habilitar_reloj_puerto(GPIOC);
+    // OE apagado antes de ser salida: el panel no debe mostrar basura mientras se configura.
+    escribir_pin(GPIOC, PIN_PANEL_OE, NIVEL_OE_APAGADO);
+    // CLK en 0 antes de ser salida: el reset deja ODR en 0, pero se escribe por claridad.
+    escribir_pin(GPIOC, PIN_PANEL_CLK, 0U);
+    // LAT en 0 antes de ser salida: el panel no debe cargar datos mientras se configura.
+    escribir_pin(GPIOC, PIN_PANEL_LAT, 0U);
+    // R1 como salida.
+    configurar_salida_del_panel(PIN_PANEL_R1);
+    // G1 como salida.
+    configurar_salida_del_panel(PIN_PANEL_G1);
+    // B1 como salida.
+    configurar_salida_del_panel(PIN_PANEL_B1);
+    // R2 como salida.
+    configurar_salida_del_panel(PIN_PANEL_R2);
+    // G2 como salida.
+    configurar_salida_del_panel(PIN_PANEL_G2);
+    // B2 como salida.
+    configurar_salida_del_panel(PIN_PANEL_B2);
+    // OE como salida.
+    configurar_salida_del_panel(PIN_PANEL_OE);
+    // LAT como salida.
+    configurar_salida_del_panel(PIN_PANEL_LAT);
+    // CLK como salida.
+    configurar_salida_del_panel(PIN_PANEL_CLK);
+    // A como salida (selección de fase).
+    configurar_salida_del_panel(PIN_PANEL_A);
+    // B como salida (selección de fase).
+    configurar_salida_del_panel(PIN_PANEL_B);
+}
+
+// Dibuja una fase completa con los colores del framebuffer. Los 128 bits de la fase son 2 módulos de 64 bits:
+//   modulo = bit / 64: 0 = panel 2 (abajo, el más lejano, girado 180 grados), 1 = panel 1 (arriba, conectado a la placa).
+//   bit_en_modulo = bit % 64; bloque = bit_en_modulo / 16, j = bit_en_modulo % 16.
+// Posición dentro del panel, según docs/mapeo_pixeles.md:
+//   si j < 8:  x = 8 * bloque + (7 - j), y = fase        (de derecha a izquierda)
+//   si j >= 8: x = 8 * bloque + (j - 8), y = fase + 4    (de izquierda a derecha)
+// R2, G2 y B2 usan la fila y + 8 dentro del panel.
+// Panel 2 girado 180 grados: columna = 31 - x, fila = 31 - y (y 31 - (y + 8) para R2, G2 y B2).
+static void dibujar_fase(uint32_t fase)
+{
+    // Se desplazan los 128 bits de la fase, uno por uno, con CLK.
+    for (uint32_t bit = 0U; bit < PANEL_BITS_POR_FASE; bit++) {
+        // Módulo al que pertenece el bit: 0 = panel 2 (abajo), 1 = panel 1 (arriba).
+        uint32_t modulo = bit / PANEL_BITS_POR_MODULO;
+        // Posición del bit dentro de su módulo (0 a 63).
+        uint32_t bit_en_modulo = bit % PANEL_BITS_POR_MODULO;
+        // Bloque de 16 bits al que pertenece el bit dentro del módulo (0 a 3).
+        uint32_t bloque = bit_en_modulo / PANEL_BITS_POR_BLOQUE;
+        // Posición del bit dentro de su bloque (0 a 15).
+        uint32_t j = bit_en_modulo % PANEL_BITS_POR_BLOQUE;
+        // Columna del píxel de la mitad de arriba dentro del panel.
+        uint32_t x;
+        // Fila del píxel de la mitad de arriba dentro del panel.
+        uint32_t y;
+        // Mitad j < 8: las columnas van de derecha a izquierda y la fila es la de la fase.
+        if (j < PANEL_COLUMNAS_POR_BLOQUE) {
+            x = PANEL_COLUMNAS_POR_BLOQUE * bloque + (PANEL_COLUMNAS_POR_BLOQUE - 1U - j);
+            y = fase;
+        // Mitad j >= 8: las columnas van de izquierda a derecha y la fila es la de la fase + 4.
+        } else {
+            x = PANEL_COLUMNAS_POR_BLOQUE * bloque + (j - PANEL_COLUMNAS_POR_BLOQUE);
+            y = fase + PANEL_SEPARACION_FILAS;
+        }
+        // Columna y filas en el tablero completo de 32x32.
+        uint32_t columna;
+        uint32_t fila_superior;
+        uint32_t fila_inferior;
+        // Panel 1 (arriba): sin giro, la fila de abajo es la fila de arriba + 8.
+        if (modulo == 1U) {
+            columna = x;
+            fila_superior = y;
+            fila_inferior = y + PANEL_FILAS_MITAD_SUPERIOR;
+        // Panel 2 (abajo, girado 180 grados): la columna y las filas se cuentan desde el otro lado.
+        } else {
+            columna = (PANEL_ANCHO - 1U) - x;
+            fila_superior = (PANEL_ALTO - 1U) - y;
+            fila_inferior = (PANEL_ALTO - 1U) - (y + PANEL_FILAS_MITAD_SUPERIOR);
+        }
+        // datos: bits 0 a 2 = R1, G1, B1 (fila superior); bits 3 a 5 = R2, G2, B2 (fila inferior), desplazados 3 posiciones.
+        uint32_t datos = framebuffer[fila_superior][columna] | (framebuffer[fila_inferior][columna] << PANEL_DESPLAZAMIENTO_MITAD_INFERIOR);
+        // Se desplazan los 6 bits de color de este píxel.
+        desplazar_bit(datos);
+    }
+    // OE apagado mientras cambian LAT y la fase: así no se ve basura durante el cambio.
+    escribir_pin(GPIOC, PIN_PANEL_OE, NIVEL_OE_APAGADO);
+    // LAT en 1: el latch pasa los 128 bits desplazados a la salida. Va después de desplazar todos los bits.
+    escribir_pin(GPIOC, PIN_PANEL_LAT, 1U);
+    // LAT en 0: termina el pulso de latch.
+    escribir_pin(GPIOC, PIN_PANEL_LAT, 0U);
+    // A toma el bit 0 de la fase (selección de fila dentro del escaneo 1/4).
+    escribir_pin(GPIOC, PIN_PANEL_A, fase & 1U);
+    // B toma el bit 1 de la fase.
+    escribir_pin(GPIOC, PIN_PANEL_B, (fase >> 1U) & 1U);
+    // OE encendido: el panel muestra la fase recién cargada.
+    escribir_pin(GPIOC, PIN_PANEL_OE, NIVEL_OE_ENCENDIDO);
+}
+
+// Guarda el color de un píxel en el framebuffer. Si x o y están fuera del tablero, no hace nada:
+// escribir fuera del arreglo dañaría otra zona de la memoria.
+void encender_pixel(uint32_t x, uint32_t y, uint32_t color)
+{
+    // Solo se escribe si x está dentro de las columnas y y dentro de las filas del tablero.
+    if (x < PANEL_ANCHO && y < PANEL_ALTO) {
+        // Se guarda el color en 3 bits (R = bit 0, G = bit 1, B = bit 2). Cabe en uint8_t sin perder datos.
+        framebuffer[y][x] = (uint8_t)color;
+    }
+}
+
+// Enciende TIM3 para que interrumpa cada 1 ms. Cada interrupción dibuja una fase del panel.
+void iniciar_refresco_panel(void)
+{
+    // (a) Se enciende el reloj de TIM3 en el bus APB1. |= no cambia los demás bits de RCC->APB1ENR.
+    RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
+    // Variable que solo sirve para leer el registro; el valor leído no se usa.
+    volatile uint32_t lectura_descartada;
+    // Dos lecturas después de habilitar el reloj, como en habilitar_reloj_puerto: el periférico necesita unos ciclos antes de usarse.
+    lectura_descartada = RCC->APB1ENR;
+    lectura_descartada = RCC->APB1ENR;
+    // El valor leído no se usa: (void) le dice al compilador que se descarta a propósito (evita la advertencia).
+    (void)lectura_descartada;
+    // (b) Divisor y valor de recarga: el contador cuenta de 0 a 999 con un reloj de 1 MHz, es decir, 1 ms.
+    TIM3->PSC = TIM3_PRESCALER;
+    TIM3->ARR = TIM3_AUTORRECARGA;
+    // (c) UG carga PSC y ARR en el momento; sin esto, el divisor nuevo esperaría a la primera actualización.
+    TIM3->EGR = TIM_EGR_UG;
+    // (d) Se limpia el UIF que dejó UG: se escribe 0 en ese bit y 1 en los demás (rc_w0 no cambia con 1).
+    TIM3->SR = ~TIM_SR_UIF;
+    // (e) Se habilita la interrupción de actualización de TIM3 (UIE).
+    TIM3->DIER |= TIM_DIER_UIE;
+    // (f) Se habilita la IRQ 29 en el NVIC. Escribir 0 en los demás bits no cambia nada, por eso no hace falta leer ISER0.
+    NVIC->ISER0 = (1U << NUMERO_INTERRUPCION_TIM3);
+    // (g) Se enciende el contador de TIM3 (CEN). A partir de aquí llegan interrupciones cada 1 ms.
+    TIM3->CR1 |= TIM_CR1_CEN;
+}
+
+// Manejador de la interrupción de TIM3. El nombre es el de la tabla de vectores de crt0.S, así que reemplaza al alias débil.
+// Se ejecuta cada 1 ms y dibuja una fase (0, 1, 2, 3, 0...): cada fase se repite 250 veces por segundo.
+void TIM3_IRQHandler(void)
+{
+    // Se limpia la causa de la interrupción (UIF) escribiendo 0 en ese bit; si no, la interrupción se repetiría sin fin.
+    TIM3->SR = ~TIM_SR_UIF;
+    // Se dibuja la fase actual con los colores que hay en el framebuffer.
+    dibujar_fase(fase_actual);
+    // Se pasa a la siguiente fase. % PANEL_FASES hace que después de la fase 3 vuelva a la 0.
+    fase_actual = (fase_actual + 1U) % PANEL_FASES;
+}
+```
+
+Lo que cambió respecto al Paso 5 es `dibujar_fase`:
+1. **`modulo = bit / PANEL_BITS_POR_MODULO`**: 0 para los bits 0 a 63 (panel 2, el más lejano) y 1 para los 64 a 127 (panel 1).
+2. **`bit_en_modulo = bit % PANEL_BITS_POR_MODULO`**: la posición del bit dentro de su panel (0 a 63). Con ese valor se calculan `bloque`, `j`, `x` e `y` **con la misma fórmula de antes**: son las coordenadas dentro del panel.
+3. **Panel 1 (`modulo == 1U`)**: sin giro. `columna = x`, `fila_superior = y` y `fila_inferior = y + PANEL_FILAS_MITAD_SUPERIOR` (8).
+4. **Panel 2 (el `else`)**: girado 180°. `columna = (PANEL_ANCHO - 1U) - x`, `fila_superior = (PANEL_ALTO - 1U) - y` y `fila_inferior = (PANEL_ALTO - 1U) - (y + PANEL_FILAS_MITAD_SUPERIOR)`. Con las constantes actuales son `31 − x`, `31 − y` y `23 − y`.
+5. **`datos`** junta el color de `framebuffer[fila_superior][columna]` en los bits 0 a 2 (R1, G1, B1) y el de `framebuffer[fila_inferior][columna]`, desplazado 3 posiciones, en los bits 3 a 5 (R2, G2, B2). Es igual que antes, pero con las filas y la columna calculadas.
+6. El **cierre** de la fase (OE apagado, pulso de LAT, A y B, OE encendido) no cambia, salvo el comentario: el latch pasa ahora 128 bits.
+7. En el programa completo, `PANEL_BITS_POR_FASE = 128` hace que el `for` dé 128 pulsos de CLK en cada interrupción de TIM3.
+
+`inc/botones.h`
+
+```c
+#ifndef BOTONES_H
+#define BOTONES_H
+
+#include "gpio_config.h"
+
+// Bit del botón A en el valor que devuelve leer_botones (1 = presionado).
+#define BOTON_A (1U << 0)
+// Bit del botón B en el valor que devuelve leer_botones (1 = presionado).
+#define BOTON_B (1U << 1)
+// Bit del botón C en el valor que devuelve leer_botones (1 = presionado).
+#define BOTON_C (1U << 2)
+// Bit del botón D en el valor que devuelve leer_botones (1 = presionado).
+#define BOTON_D (1U << 3)
+// Bit del botón E en el valor que devuelve leer_botones (1 = presionado).
+#define BOTON_E (1U << 4)
+// Bit del botón de reinicio en el valor que devuelve leer_botones (1 = presionado): el botón azul de la placa, PC13.
+#define BOTON_REINICIO (1U << 5)
+
+// Configura los cinco botones del shield y el botón azul de la placa como entradas con pull-up interno.
+void configurar_botones(void);
+// Devuelve un valor con un bit por cada botón presionado (BOTON_A a BOTON_E y BOTON_REINICIO). Un bit en 1 = botón presionado.
+uint32_t leer_botones(void);
+
+#endif
+```
+
+- `BOTON_F` desaparece y su bit (el 5) pasa a ser **`BOTON_REINICIO`**: el botón azul de la placa (PC13). A a E quedan con los mismos bits (0 a 4).
+
+`src/botones.c`
+
+```c
+#include "botones.h"
+
+// Número del pin del botón A del shield: PA10, activo en bajo (presionado = 0).
+#define PIN_BOTON_A 10U
+// Número del pin del botón B del shield: PB3, activo en bajo (presionado = 0).
+#define PIN_BOTON_B 3U
+// Número del pin del botón C del shield: PB5, activo en bajo (presionado = 0).
+#define PIN_BOTON_C 5U
+// Número del pin del botón D del shield: PB4, activo en bajo (presionado = 0).
+#define PIN_BOTON_D 4U
+// Número del pin del botón E del shield: PB10, activo en bajo (presionado = 0).
+#define PIN_BOTON_E 10U
+// Número del pin del botón azul de la placa: PC13, activo en bajo (presionado = 0).
+#define PIN_BOTON_REINICIO 13U
+
+// Configura un pin como entrada con pull-up interno. El pin queda en 1 mientras el botón no está presionado.
+static void configurar_entrada_con_pull_up(RegistrosGPIO *puerto, uint32_t pin)
+{
+    // Datos de configuración del pin, que se escriben de una sola vez con configurar_pin.
+    ConfiguracionPin configuracion;
+    // El botón es una entrada.
+    configuracion.modo = MODO_ENTRADA;
+    // Número del pin dentro del puerto.
+    configuracion.pin = pin;
+    // Pull-up interno: el pin queda en 1 mientras el botón no está presionado.
+    configuracion.resistencia = RESISTENCIA_PULL_UP;
+    // Velocidad baja.
+    configuracion.velocidad = VELOCIDAD_BAJA;
+    // AF0: no se usa, el pin no es de función alterna.
+    configuracion.funcion_alterna = 0U;
+    // Se escribe la configuración en el puerto indicado.
+    configurar_pin(puerto, configuracion);
+}
+
+void configurar_botones(void)
+{
+    // Botón A (PA10) en el puerto A.
+    configurar_entrada_con_pull_up(GPIOA, PIN_BOTON_A);
+    // Botón B (PB3) en el puerto B. PB3 arranca en función alterna de depuración; por eso se configura explícitamente como entrada.
+    configurar_entrada_con_pull_up(GPIOB, PIN_BOTON_B);
+    // Botón C (PB5) en el puerto B.
+    configurar_entrada_con_pull_up(GPIOB, PIN_BOTON_C);
+    // Botón D (PB4) en el puerto B. PB4 arranca en función alterna de depuración; por eso se configura explícitamente como entrada.
+    configurar_entrada_con_pull_up(GPIOB, PIN_BOTON_D);
+    // Botón E (PB10) en el puerto B.
+    configurar_entrada_con_pull_up(GPIOB, PIN_BOTON_E);
+    // Botón azul de la placa (PC13) en el puerto C.
+    configurar_entrada_con_pull_up(GPIOC, PIN_BOTON_REINICIO);
+}
+
+uint32_t leer_botones(void)
+{
+    // Valor que se va armando: cada botón presionado pone su bit en 1.
+    uint32_t botones = 0U;
+    // Los botones son activos en bajo: leer_pin devuelve 0 cuando el botón está presionado.
+    if (leer_pin(GPIOA, PIN_BOTON_A) == 0U) {
+        // Se pone en 1 el bit del botón A (|= no cambia los demás bits).
+        botones |= BOTON_A;
+    }
+    // Botón B (PB3): presionado = 0.
+    if (leer_pin(GPIOB, PIN_BOTON_B) == 0U) {
+        // Se pone en 1 el bit del botón B.
+        botones |= BOTON_B;
+    }
+    // Botón C (PB5): presionado = 0.
+    if (leer_pin(GPIOB, PIN_BOTON_C) == 0U) {
+        // Se pone en 1 el bit del botón C.
+        botones |= BOTON_C;
+    }
+    // Botón D (PB4): presionado = 0.
+    if (leer_pin(GPIOB, PIN_BOTON_D) == 0U) {
+        // Se pone en 1 el bit del botón D.
+        botones |= BOTON_D;
+    }
+    // Botón E (PB10): presionado = 0.
+    if (leer_pin(GPIOB, PIN_BOTON_E) == 0U) {
+        // Se pone en 1 el bit del botón E.
+        botones |= BOTON_E;
+    }
+    // Botón azul de la placa (PC13): presionado = 0.
+    if (leer_pin(GPIOC, PIN_BOTON_REINICIO) == 0U) {
+        // Se pone en 1 el bit del botón de reinicio.
+        botones |= BOTON_REINICIO;
+    }
+    // Se devuelve el valor con un bit por cada botón presionado.
+    return botones;
+}
+```
+
+- `PIN_BOTON_F` (PA8) se quita y aparece **`PIN_BOTON_REINICIO` = 13**: el botón azul, PC13, activo en bajo (presionado = 0), como en el Paso 1.
+- `configurar_botones` configura PC13 como entrada con pull-up interno con la misma función que los demás (`configurar_entrada_con_pull_up(GPIOC, ...)`). La función `configurar_pin` solo cambia los bits del pin 13, así que no toca los pines del panel que también están en el puerto C.
+- `leer_botones` lee PC13 con `leer_pin(GPIOC, ...)`: si vale 0, pone el bit `BOTON_REINICIO`.
+- Las lecturas de A a E no cambian.
+
+`main.c`
+
+```c
+#include "system_config.h"
+#include "panel.h"
+#include "botones.h"
+#include "snake.h"
+
+// Tiempo entre un paso de la serpiente y el siguiente, en milisegundos. La serpiente avanza una celda cada 200 ms.
+#define PERIODO_MOVIMIENTO_MS 200U
+
+int main(void)
+{
+    // Primero el reloj, antes de usar cualquier periférico: deja el sistema a 84 MHz.
+    configurar_reloj();
+    // Se enciende la base de tiempo de 1 ms (SysTick), que usa el temporizador de movimiento.
+    iniciar_systick();
+
+    // Se configuran los pines del panel como salidas.
+    configurar_panel();
+    // Se enciende TIM3: desde aquí, una interrupción cada 1 ms dibuja una fase del framebuffer en el panel.
+    iniciar_refresco_panel();
+
+    // Se configuran los cinco botones del shield y el botón azul de la placa como entradas con pull-up.
+    configurar_botones();
+    // El temporizador de movimiento cuenta desde 0 con un periodo de 200 ms.
+    iniciar_temporizador_movimiento(PERIODO_MOVIMIENTO_MS);
+    // La serpiente aparece en el centro, quieta, y se coloca la primera manzana.
+    iniciar_juego();
+
+    while (1) {
+        // Los botones se leen en cada vuelta del bucle, no solo cuando vence el temporizador, para no perder pulsaciones cortas.
+        uint32_t botones = leer_botones();
+        // El botón azul de la placa reinicia la partida (mientras se mantiene presionado); si no, los botones A a D piden una dirección.
+        if ((botones & BOTON_REINICIO) != 0U) {
+            iniciar_juego();
+        } else {
+            pedir_direccion(botones);
+        }
+
+        // La bandera del temporizador se consume siempre, aunque haya pausa, para que no quede un vencimiento viejo pendiente.
+        if (temporizador_movimiento_vencio() == 1U) {
+            // E pausa el juego solo mientras se mantiene presionada: si no está presionada, la serpiente avanza un paso.
+            if ((botones & BOTON_E) == 0U) {
+                avanzar_serpiente();
+            }
+        }
+    }
+}
+```
+
+- Lo único que cambia respecto al Paso 10 es el reinicio: `if ((botones & BOTON_REINICIO) != 0U)` en lugar de `BOTON_F`, con los comentarios corregidos. Reinicia **mientras se mantiene oprimido**, igual que antes con F (con el mismo límite de parpadeo que se anotó en el Paso 7). E sigue pausando.
+- Reiniciar con el botón azul **no resiembra el LFSR** (no se reinicia el programa): la primera manzana de la partida nueva es aleatoria. Si se reinicia con el botón negro RESET de la placa, el programa arranca de cero y la primera manzana vuelve a salir en (1, 0).
+
+`inc/snake.h`
+
+```c
+#ifndef SNAKE_H
+#define SNAKE_H
+
+#include "panel.h"
+
+// Posición de un segmento del cuerpo, de la manzana o del veneno, en píxeles del tablero.
+typedef struct {
+    // Columna x del píxel, de 0 a PANEL_ANCHO - 1.
+    uint8_t x;
+    // Fila y del píxel, de 0 a PANEL_ALTO - 1.
+    uint8_t y;
+} Posicion;
+
+// Cantidad de posiciones del arreglo circular del cuerpo: una por cada píxel del tablero, así la serpiente puede llenarlo.
+#define CAPACIDAD_CUERPO (PANEL_ANCHO * PANEL_ALTO)
+// Cantidad de segmentos con la que empieza la serpiente.
+#define LONGITUD_INICIAL 3U
+// Dirección sin movimiento: la serpiente está quieta hasta que se presiona A, B, C o D.
+#define DIRECCION_QUIETO 0U
+// Dirección arriba: y disminuye (el botón D).
+#define DIRECCION_ARRIBA 1U
+// Dirección derecha: x aumenta (el botón C).
+#define DIRECCION_DERECHA 2U
+// Dirección abajo: y aumenta (el botón B).
+#define DIRECCION_ABAJO 3U
+// Dirección izquierda: x disminuye (el botón A).
+#define DIRECCION_IZQUIERDA 4U
+// Pasos del juego que el veneno azul se queda en pantalla: 25 pasos (5 s a 200 ms por paso).
+#define VENENO_DURACION_PASOS 25U
+// Pasos del juego que el veneno espera escondido antes de reaparecer: 50 pasos (10 s).
+#define VENENO_ESPERA_PASOS 50U
+// Segmentos que pierde la serpiente al comer veneno.
+#define VENENO_SEGMENTOS_PERDIDOS 2U
+// Puntos que pierde el puntaje al comer veneno. Nunca baja de 0.
+#define VENENO_PUNTOS_PERDIDOS 2U
+
+// Borra la pantalla y pone la serpiente, la manzana, el puntaje y el estado de arranque.
+void iniciar_juego(void);
+// Guarda la dirección que piden los botones A a D. Si no hay ninguno de A a D presionado, no cambia la pedida.
+void pedir_direccion(uint32_t botones);
+// Hace un paso del juego: mueve la serpiente una celda o marca el fin de la partida.
+void avanzar_serpiente(void);
+
+#endif
+```
+
+- Solo cambian los comentarios de las direcciones: arriba = botón D, derecha = botón C, abajo = botón B e izquierda = botón A.
+
+`src/snake.c`
+
+```c
+#include "snake.h"
+#include "graficos.h"
+#include "botones.h"
+#include "system_config.h"
+#include "aleatorio.h"
+
+// Cuerpo de la serpiente: arreglo circular. Los segmentos van desde cola hasta cabeza, y son longitud en total.
+static Posicion cuerpo[CAPACIDAD_CUERPO];
+// Índice dentro de cuerpo del segmento de la cabeza (el más nuevo).
+static uint32_t cabeza = 0U;
+// Índice dentro de cuerpo del segmento de la cola (el más viejo, el primero que se apaga al moverse).
+static uint32_t cola = 0U;
+// Cantidad de segmentos de la serpiente. Crece 1 por cada manzana comida y baja 2 por cada veneno comido.
+static uint32_t longitud = 0U;
+// Dirección del último paso hecho: uno de los DIRECCION_*. Empieza en derecha.
+static uint32_t direccion_actual = DIRECCION_DERECHA;
+// Dirección pedida por el último botón de A a D presionado: uno de los DIRECCION_*. Empieza en quieto.
+static uint32_t direccion_pedida = DIRECCION_QUIETO;
+// Vale 0 hasta que se presiona un botón de dirección válido. Mientras vale 0, la serpiente está quieta.
+static uint32_t en_marcha = 0U;
+// Posición de la manzana roja en el tablero.
+static Posicion manzana;
+// Puntos acumulados: sube 1 por cada manzana comida y baja 2 por cada veneno comido (sin bajar de 0).
+static uint32_t puntaje = 0U;
+// Vale 1 cuando la serpiente chocó o llenó el tablero. Lo pone terminar_partida, que además muestra el puntaje. Al terminar, la serpiente se queda quieta hasta reiniciar.
+static uint32_t juego_terminado = 0U;
+// Posición del veneno azul en el tablero. Solo es válida mientras veneno_visible vale 1.
+static Posicion veneno;
+// Vale 1 mientras el veneno está en el tablero; vale 0 cuando está escondido, esperando a reaparecer.
+static uint32_t veneno_visible = 0U;
+// Pasos del juego que faltan para que el veneno desaparezca (si está visible) o aparezca (si no está visible).
+static uint32_t pasos_veneno = 0U;
+// Vale 1 cuando la manzana tiene una posición válida. Sirve para no comparar con una posición vieja al buscar celda libre.
+static uint32_t manzana_colocada = 0U;
+// Vale 1 después de sembrar el generador aleatorio con el primer botón de dirección. Solo se siembra una vez por arranque.
+static uint32_t aleatorio_sembrado = 0U;
+
+// Devuelve la dirección contraria a la recibida: arriba con abajo, y derecha con izquierda.
+static uint32_t direccion_opuesta(uint32_t direccion)
+{
+    // Si la dirección es arriba, la contraria es abajo.
+    if (direccion == DIRECCION_ARRIBA) {
+        return DIRECCION_ABAJO;
+    }
+    // Si la dirección es abajo, la contraria es arriba.
+    if (direccion == DIRECCION_ABAJO) {
+        return DIRECCION_ARRIBA;
+    }
+    // Si la dirección es derecha, la contraria es izquierda.
+    if (direccion == DIRECCION_DERECHA) {
+        return DIRECCION_IZQUIERDA;
+    }
+    // Si la dirección es izquierda, la contraria es derecha.
+    if (direccion == DIRECCION_IZQUIERDA) {
+        return DIRECCION_DERECHA;
+    }
+    // Sin dirección (quieto) no hay contraria: se devuelve quieto.
+    return DIRECCION_QUIETO;
+}
+
+// Devuelve 1 si algún segmento del cuerpo está en la posición (x, y), y 0 si ninguno está.
+static uint32_t celda_ocupada(uint32_t x, uint32_t y)
+{
+    // Se recorren los segmentos desde la cola: son longitud segmentos en total.
+    for (uint32_t i = 0U; i < longitud; i++) {
+        // Índice real del segmento i dentro del arreglo circular: la vuelta al principio la hace el módulo.
+        uint32_t indice = (cola + i) % CAPACIDAD_CUERPO;
+        // Si el segmento está en la posición buscada, la celda está ocupada.
+        if (cuerpo[indice].x == x && cuerpo[indice].y == y) {
+            return 1U;
+        }
+    }
+    // Ningún segmento está en esa posición: la celda está libre.
+    return 0U;
+}
+
+// Devuelve 1 si la celda (x, y) está libre: sin cuerpo, sin manzana y sin veneno visible. Si no, devuelve 0.
+static uint32_t celda_libre(uint32_t x, uint32_t y)
+{
+    // Si algún segmento del cuerpo está en la celda, no está libre.
+    if (celda_ocupada(x, y) == 1U) {
+        return 0U;
+    }
+    // Si la manzana tiene posición válida y está en la celda, no está libre.
+    if (manzana_colocada == 1U && manzana.x == x && manzana.y == y) {
+        return 0U;
+    }
+    // Si el veneno está visible y está en la celda, no está libre.
+    if (veneno_visible == 1U && veneno.x == x && veneno.y == y) {
+        return 0U;
+    }
+    // Ninguna de las tres cosas está en la celda: está libre.
+    return 1U;
+}
+
+// Busca una celda libre al azar y guarda su posición en *destino. Devuelve 1 si la encontró y 0 si el tablero está lleno.
+// Empieza en una celda que sale del LFSR y, si está ocupada, pasa a la siguiente (circular).
+// Aviso: prueba como máximo CAPACIDAD_CUERPO celdas y cada prueba recorre el cuerpo. Solo tarda mucho si el tablero está casi lleno.
+static uint32_t buscar_celda_libre(Posicion *destino)
+{
+    // Celda de partida: un número aleatorio cortado al tamaño del tablero.
+    uint32_t celda_inicial = siguiente_aleatorio() % CAPACIDAD_CUERPO;
+    // Se prueban todas las celdas del tablero una sola vez, empezando por la celda de partida.
+    for (uint32_t i = 0U; i < CAPACIDAD_CUERPO; i++) {
+        // Celda que se prueba en esta vuelta: si pasa del final del tablero, vuelve al principio.
+        uint32_t celda = (celda_inicial + i) % CAPACIDAD_CUERPO;
+        // Columna x de la celda: el resto de dividir la celda entre el ancho del tablero.
+        uint32_t x = celda % PANEL_ANCHO;
+        // Fila y de la celda: el cociente de dividir la celda entre el ancho del tablero.
+        uint32_t y = celda / PANEL_ANCHO;
+        // Si la celda está libre, se guarda su posición en el destino.
+        if (celda_libre(x, y) == 1U) {
+            destino->x = x;
+            destino->y = y;
+            return 1U;
+        }
+    }
+    // Ninguna celda está libre: el tablero está lleno.
+    return 0U;
+}
+
+// Termina la partida: marca juego_terminado, borra el tablero y muestra el puntaje en blanco, centrado en el panel.
+static void terminar_partida(void)
+{
+    // Marca la partida como terminada: a partir de aquí avanzar_serpiente no mueve la serpiente.
+    juego_terminado = 1U;
+    // Borra todo el tablero para que solo quede el puntaje.
+    borrar_pantalla();
+    // Dibuja el puntaje centrado en blanco: la esquina izquierda va en (ancho del panel - ancho del número) / 2 y la superior en (alto del panel - alto de la fuente) / 2.
+    dibujar_numero((PANEL_ANCHO - NUMERO_ANCHO) / 2U, (PANEL_ALTO - FUENTE_ALTO) / 2U, puntaje, COLOR_BLANCO);
+}
+
+// Pone la manzana en una celda libre y la enciende en rojo. Si no hay celda libre, la serpiente llenó el tablero y la partida termina.
+static void colocar_manzana(void)
+{
+    // Si se encontró una celda libre, la manzana va ahí.
+    if (buscar_celda_libre(&manzana) == 1U) {
+        // La manzana ya tiene posición válida.
+        manzana_colocada = 1U;
+        // Se enciende la manzana en rojo.
+        encender_pixel(manzana.x, manzana.y, COLOR_ROJO);
+    } else {
+        // Ninguna celda está libre: la serpiente llena el tablero, así que la partida termina y se muestra el puntaje.
+        terminar_partida();
+    }
+}
+
+// Pone el veneno en una celda libre y lo enciende en azul. Si no hay celda libre, el veneno no aparece esta vez.
+static void colocar_veneno(void)
+{
+    // Si se encontró una celda libre, el veneno va ahí.
+    if (buscar_celda_libre(&veneno) == 1U) {
+        // El veneno está visible durante VENENO_DURACION_PASOS pasos del juego.
+        veneno_visible = 1U;
+        pasos_veneno = VENENO_DURACION_PASOS;
+        // Se enciende el veneno en azul.
+        encender_pixel(veneno.x, veneno.y, COLOR_AZUL);
+    } else {
+        // No hay celda libre: el veneno no aparece y se vuelve a intentar después de VENENO_ESPERA_PASOS pasos.
+        veneno_visible = 0U;
+        pasos_veneno = VENENO_ESPERA_PASOS;
+    }
+}
+
+void iniciar_juego(void)
+{
+    // Se borra la pantalla para quitar lo que quedó de la partida anterior.
+    borrar_pantalla();
+    // La serpiente empieza con LONGITUD_INICIAL segmentos.
+    longitud = LONGITUD_INICIAL;
+    // La cola es el primer segmento del arreglo: índice 0.
+    cola = 0U;
+    // La cabeza es el último de los segmentos iniciales: índice LONGITUD_INICIAL - 1.
+    cabeza = LONGITUD_INICIAL - 1U;
+    // Columna del centro del panel. Los segmentos se ponen a su izquierda y en el centro.
+    uint32_t x = PANEL_ANCHO / 2U;
+    // Fila del centro del panel.
+    uint32_t y = PANEL_ALTO / 2U;
+    // Segmento 0 (cola): dos columnas a la izquierda del centro.
+    cuerpo[0].x = x - 2U;
+    cuerpo[0].y = y;
+    // Segmento 1: una columna a la izquierda del centro.
+    cuerpo[1].x = x - 1U;
+    cuerpo[1].y = y;
+    // Segmento 2 (cabeza): el centro.
+    cuerpo[2].x = x;
+    cuerpo[2].y = y;
+    // Se encienden los tres segmentos en verde.
+    encender_pixel(x - 2U, y, COLOR_VERDE);
+    encender_pixel(x - 1U, y, COLOR_VERDE);
+    encender_pixel(x, y, COLOR_VERDE);
+    // La serpiente mira a la derecha, pero no se mueve hasta que se presione un botón válido.
+    direccion_actual = DIRECCION_DERECHA;
+    // No hay dirección pedida todavía.
+    direccion_pedida = DIRECCION_QUIETO;
+    // La serpiente está quieta hasta el primer botón válido.
+    en_marcha = 0U;
+    // El puntaje vuelve a 0.
+    puntaje = 0U;
+    // La partida está en curso.
+    juego_terminado = 0U;
+    // El veneno no está en el tablero al empezar. Su primera aparición ocurre tras VENENO_ESPERA_PASOS pasos.
+    veneno_visible = 0U;
+    pasos_veneno = VENENO_ESPERA_PASOS;
+    // La manzana todavía no tiene posición válida: así colocar_manzana no compara con la posición de la partida anterior.
+    manzana_colocada = 0U;
+    // Se coloca la primera manzana en una celda libre.
+    colocar_manzana();
+}
+
+void pedir_direccion(uint32_t botones)
+{
+    // Si hay algún botón de A a D presionado y el generador todavía no se sembró, se siembra ahora, una sola vez por arranque.
+    // Se siembra aquí y no al vencer el temporizador: en el instante en que se presiona el botón, los milisegundos son distintos en cada arranque;
+    // al vencer el temporizador siempre serían múltiplos de 200 más una constante.
+    if (((botones & (BOTON_A | BOTON_B | BOTON_C | BOTON_D)) != 0U) && (aleatorio_sembrado == 0U)) {
+        // La semilla son los milisegundos desde el arranque, en el instante de la primera pulsación.
+        sembrar_aleatorio(obtener_milisegundos());
+        // Se marca que ya se sembró para no volver a sembrar en esta partida ni en las siguientes.
+        aleatorio_sembrado = 1U;
+    }
+    // La asignación de cada botón a su dirección coincide con la posición física de los botones en el shield: A a la izquierda, B abajo, C a la derecha y D arriba.
+    // Si el botón A está presionado, la dirección pedida es izquierda.
+    if ((botones & BOTON_A) != 0U) {
+        direccion_pedida = DIRECCION_IZQUIERDA;
+    }
+    // Si el botón B está presionado, la dirección pedida es abajo.
+    if ((botones & BOTON_B) != 0U) {
+        direccion_pedida = DIRECCION_ABAJO;
+    }
+    // Si el botón C está presionado, la dirección pedida es derecha.
+    if ((botones & BOTON_C) != 0U) {
+        direccion_pedida = DIRECCION_DERECHA;
+    }
+    // Si el botón D está presionado, la dirección pedida es arriba.
+    if ((botones & BOTON_D) != 0U) {
+        direccion_pedida = DIRECCION_ARRIBA;
+    }
+}
+
+void avanzar_serpiente(void)
+{
+    // Paso 1: si la partida terminó, no se hace nada: la serpiente queda congelada.
+    if (juego_terminado == 1U) {
+        return;
+    }
+    // Paso 2: si se pidió una dirección que no es la opuesta a la actual, se cambia la dirección.
+    // La opuesta se ignora para que la serpiente no se vuelva sobre sí misma.
+    if (direccion_pedida != DIRECCION_QUIETO && direccion_pedida != direccion_opuesta(direccion_actual)) {
+        // La dirección del último paso pasa a ser la pedida.
+        direccion_actual = direccion_pedida;
+        // Con una dirección válida, la serpiente empieza a moverse.
+        en_marcha = 1U;
+    }
+    // Paso 3: antes del primer botón válido, la serpiente sigue quieta.
+    if (en_marcha == 0U) {
+        return;
+    }
+
+    // Paso 4: se calcula la cabeza nueva, un paso desde la cabeza actual en la dirección actual.
+    // La cabeza actual es el segmento del índice cabeza.
+    uint32_t nueva_x = cuerpo[cabeza].x;
+    uint32_t nueva_y = cuerpo[cabeza].y;
+    // Arriba: y disminuye. Si y ya es 0 (primera fila), la cabeza saldría del tablero y la partida termina.
+    if (direccion_actual == DIRECCION_ARRIBA) {
+        if (nueva_y == 0U) {
+            terminar_partida();
+            return;
+        }
+        nueva_y = nueva_y - 1U;
+    }
+    // Abajo: y aumenta. Si y ya es la última fila, la partida termina.
+    if (direccion_actual == DIRECCION_ABAJO) {
+        if (nueva_y == PANEL_ALTO - 1U) {
+            terminar_partida();
+            return;
+        }
+        nueva_y = nueva_y + 1U;
+    }
+    // Izquierda: x disminuye. Si x ya es 0 (primera columna), la partida termina.
+    if (direccion_actual == DIRECCION_IZQUIERDA) {
+        if (nueva_x == 0U) {
+            terminar_partida();
+            return;
+        }
+        nueva_x = nueva_x - 1U;
+    }
+    // Derecha: x aumenta. Si x ya es la última columna, la partida termina.
+    if (direccion_actual == DIRECCION_DERECHA) {
+        if (nueva_x == PANEL_ANCHO - 1U) {
+            terminar_partida();
+            return;
+        }
+        nueva_x = nueva_x + 1U;
+    }
+
+    // Paso 5: si la cabeza nueva cae sobre el cuerpo, la partida termina. Esto incluye la cola,
+    // porque la cola todavía no se movió en este paso.
+    if (celda_ocupada(nueva_x, nueva_y) == 1U) {
+        terminar_partida();
+        return;
+    }
+
+    // Paso 5b: se mira si la cabeza nueva cae sobre el veneno visible. Se calcula antes de mover la cabeza.
+    uint32_t come_veneno = (veneno_visible == 1U && nueva_x == veneno.x && nueva_y == veneno.y);
+    // Si se come veneno con VENENO_SEGMENTOS_PERDIDOS segmentos o menos, la serpiente muere: la partida termina y la serpiente no se mueve.
+    if (come_veneno == 1U && longitud <= VENENO_SEGMENTOS_PERDIDOS) {
+        terminar_partida();
+        return;
+    }
+
+    // Paso 6: la cabeza avanza una posición en el arreglo circular y guarda la posición nueva.
+    cabeza = (cabeza + 1U) % CAPACIDAD_CUERPO;
+    cuerpo[cabeza].x = nueva_x;
+    cuerpo[cabeza].y = nueva_y;
+    // Se enciende el píxel de la nueva cabeza en verde.
+    encender_pixel(nueva_x, nueva_y, COLOR_VERDE);
+
+    // Paso 7: si la cabeza llegó a la manzana, la serpiente crece: la cola no se mueve, suma 1 segmento
+    // y 1 punto, y aparece otra manzana.
+    if (nueva_x == manzana.x && nueva_y == manzana.y) {
+        // Un segmento más.
+        longitud++;
+        // Un punto más.
+        puntaje++;
+        // Nueva manzana en una celda libre.
+        colocar_manzana();
+    } else {
+        // Si no hubo manzana, la cola se mueve: se apaga el píxel de la cola en negro para que no quede un segmento viejo.
+        encender_pixel(cuerpo[cola].x, cuerpo[cola].y, COLOR_NEGRO);
+        // El índice de la cola avanza una posición en el arreglo circular.
+        cola = (cola + 1U) % CAPACIDAD_CUERPO;
+        // Si además se comió veneno, la serpiente pierde VENENO_SEGMENTOS_PERDIDOS segmentos más desde la cola.
+        if (come_veneno == 1U) {
+            // Cada segmento perdido: se apaga su píxel, la cola avanza y la longitud baja 1.
+            for (uint32_t i = 0U; i < VENENO_SEGMENTOS_PERDIDOS; i++) {
+                encender_pixel(cuerpo[cola].x, cuerpo[cola].y, COLOR_NEGRO);
+                cola = (cola + 1U) % CAPACIDAD_CUERPO;
+                longitud--;
+            }
+            // El puntaje baja VENENO_PUNTOS_PERDIDOS, pero nunca por debajo de 0.
+            if (puntaje >= VENENO_PUNTOS_PERDIDOS) {
+                puntaje = puntaje - VENENO_PUNTOS_PERDIDOS;
+            } else {
+                puntaje = 0U;
+            }
+            // El veneno se consume: deja de estar visible y empieza la espera para reaparecer.
+            // Su píxel queda cubierto por la cabeza verde, así que no hace falta apagarlo.
+            veneno_visible = 0U;
+            pasos_veneno = VENENO_ESPERA_PASOS;
+        }
+    }
+
+    // Paso 8: el tiempo del veneno avanza un paso. Solo si la partida sigue y en este paso no se comió veneno.
+    if (juego_terminado == 0U && come_veneno == 0U) {
+        // El contador no baja de 0: solo se resta si todavía vale más de 0.
+        if (pasos_veneno > 0U) {
+            pasos_veneno--;
+        }
+        // Si el contador llegó a 0, toca cambiar el estado del veneno.
+        if (pasos_veneno == 0U) {
+            // Si el veneno estaba visible, desaparece: se apaga su píxel y empieza la espera para reaparecer.
+            if (veneno_visible == 1U) {
+                encender_pixel(veneno.x, veneno.y, COLOR_NEGRO);
+                veneno_visible = 0U;
+                pasos_veneno = VENENO_ESPERA_PASOS;
+            } else {
+                // Si el veneno estaba escondido, reaparece en una celda libre.
+                colocar_veneno();
+            }
+        }
+    }
+}
+```
+
+Lo que cambió respecto al Paso 10 es `pedir_direccion`:
+- **A pide izquierda, B abajo, C derecha y D arriba** (antes A arriba, B derecha, C abajo y D izquierda). Los botones no cambiaron de pin ni de bit: lo que cambió es qué dirección pide cada uno.
+- La siembra del LFSR con la primera pulsación de cualquier botón de A a D sigue igual.
+- La regla de los 180° (`direccion_opuesta`) funciona con las direcciones nuevas: el `revisor` simuló en el PC las 16 combinaciones de A a D y que, yendo a la derecha, pedir izquierda se ignora.
+- El comentario nuevo dice que la asignación coincide con la posición física de los botones en el shield de Daniela (A a la izquierda, B abajo, C a la derecha, D arriba). **Esa posición se dedujo de lo que Daniela describió (arriba va a la izquierda, izquierda va arriba, abajo va a la derecha y derecha va hacia abajo) y de la suposición de que el shield es el estándar (A arriba, B derecha, C abajo y D izquierda); no se verificó.**
+- El resto del archivo no cambia respecto al Paso 10.
+
+### Código temporal (no está en el repo)
+Los tres fragmentos siguientes se usaron para medir y comprobar el mapeo. No están en el repo: se reemplazaron por el juego.
+
+`dibujar_fase_de_prueba` (se agregó a `panel.c` y se quitó después; usaba `PANEL_BITS_POR_CADENA = 128`, que también se quitó)
+
+```c
+// Desplaza PANEL_BITS_POR_CADENA bits. Solo el bit bit_encendido sale en 1 (G1 y R2), así se ve en qué píxel aparece.
+void dibujar_fase_de_prueba(uint32_t bit_encendido, uint32_t fase)
+{
+    // Se desplazan los 128 bits de la cadena, uno por uno, con CLK.
+    for (uint32_t bit = 0U; bit < PANEL_BITS_POR_CADENA; bit++) {
+        // Si este es el bit encendido, G1 (mitad de arriba) y R2 (mitad de abajo) salen en 1; si no, todo en 0.
+        uint32_t datos = ((bit == bit_encendido) ? ((1U << PIN_PANEL_G1) | (1U << PIN_PANEL_R2)) : 0U);
+        // Se desplazan los 6 bits de color de este bit.
+        desplazar_bit(datos);
+    }
+    // OE apagado mientras cambian LAT y la fase: así no se ve basura durante el cambio.
+    escribir_pin(GPIOC, PIN_PANEL_OE, NIVEL_OE_APAGADO);
+    // LAT en 1: el latch pasa los bits desplazados a la salida. Va después de desplazar todos los bits.
+    escribir_pin(GPIOC, PIN_PANEL_LAT, 1U);
+    // LAT en 0: termina el pulso de latch.
+    escribir_pin(GPIOC, PIN_PANEL_LAT, 0U);
+    // A toma el bit 0 de la fase (selección de fila dentro del escaneo 1/4).
+    escribir_pin(GPIOC, PIN_PANEL_A, fase & 1U);
+    // B toma el bit 1 de la fase.
+    escribir_pin(GPIOC, PIN_PANEL_B, (fase >> 1U) & 1U);
+    // OE encendido: el panel muestra la fase recién cargada.
+    escribir_pin(GPIOC, PIN_PANEL_OE, NIVEL_OE_ENCENDIDO);
+}
+```
+
+`main.c` de medición (11a): A y B cambian el bit en ±1, E y F en ±16 (un bloque de `PANEL_BITS_POR_BLOQUE`) y C y D cambian la fase; detecta el instante en que se oprime cada botón (`botones & ~botones_anteriores`) y espera 30 ms de antirrebote.
+
+```c
+// Programa temporal de medición del mapeo de los dos paneles encadenados. El juego está en git (HEAD) y se restaurará después.
+#include "system_config.h"
+#include "panel.h"
+#include "botones.h"
+
+int main(void)
+{
+    // Primero el reloj, antes de usar cualquier periférico: deja el sistema a 84 MHz.
+    configurar_reloj();
+    // Se enciende la base de tiempo de 1 ms (SysTick), que usa esperar_milisegundos.
+    iniciar_systick();
+    // Se configuran los pines del panel como salidas. TIM3 no se inicia en esta prueba.
+    configurar_panel();
+    // Se configuran los seis botones como entradas con pull-up.
+    configurar_botones();
+
+    // Bit de la cadena que se enciende (0 a 127).
+    uint32_t bit_encendido = 0U;
+    // Fase que se muestra (0 a 3).
+    uint32_t fase = 0U;
+    // Botones presionados en la vuelta anterior, para detectar solo el flanco de pulsación.
+    uint32_t botones_anteriores = 0U;
+
+    while (1) {
+        // Botones presionados en esta vuelta.
+        uint32_t botones = leer_botones();
+        // Flancos de pulsación: bits que están presionados ahora y no lo estaban antes. Así cada pulsación actúa una vez.
+        uint32_t nuevos = botones & ~botones_anteriores;
+        // Se guarda el estado actual para comparar en la siguiente vuelta.
+        botones_anteriores = botones;
+
+        // A: el bit encendido avanza 1 y da la vuelta al llegar a 128.
+        if ((nuevos & BOTON_A) != 0U) {
+            bit_encendido = (bit_encendido + 1U) % PANEL_BITS_POR_CADENA;
+        }
+        // B: el bit encendido retrocede 1; sumar PANEL_BITS_POR_CADENA evita un número negativo sin signo.
+        if ((nuevos & BOTON_B) != 0U) {
+            bit_encendido = (bit_encendido + PANEL_BITS_POR_CADENA - 1U) % PANEL_BITS_POR_CADENA;
+        }
+        // E: el bit encendido avanza un bloque de PANEL_BITS_POR_BLOQUE (16) bits.
+        if ((nuevos & BOTON_E) != 0U) {
+            bit_encendido = (bit_encendido + PANEL_BITS_POR_BLOQUE) % PANEL_BITS_POR_CADENA;
+        }
+        // F: el bit encendido retrocede un bloque de PANEL_BITS_POR_BLOQUE (16) bits; sumar PANEL_BITS_POR_CADENA evita un número negativo sin signo.
+        if ((nuevos & BOTON_F) != 0U) {
+            bit_encendido = (bit_encendido + PANEL_BITS_POR_CADENA - PANEL_BITS_POR_BLOQUE) % PANEL_BITS_POR_CADENA;
+        }
+        // C: la fase avanza 1 y da la vuelta al llegar a 4.
+        if ((nuevos & BOTON_C) != 0U) {
+            fase = (fase + 1U) % PANEL_FASES;
+        }
+        // D: la fase retrocede 1; sumar PANEL_FASES evita un número negativo sin signo.
+        if ((nuevos & BOTON_D) != 0U) {
+            fase = (fase + PANEL_FASES - 1U) % PANEL_FASES;
+        }
+
+        // Si hubo alguna pulsación nueva, se espera 30 ms para que el rebote del botón no cuente como otra pulsación.
+        if (nuevos != 0U) {
+            esperar_milisegundos(30U);
+        }
+
+        // Se dibuja la fase con el bit encendido. Se llama en cada vuelta porque no hay refresco por interrupción.
+        dibujar_fase_de_prueba(bit_encendido, fase);
+    }
+}
+```
+
+`main.c` de la pantalla de prueba (11b): marco verde de 32×32, un dígito blanco en cada esquina (1 arriba a la izquierda, 2 arriba a la derecha, 3 abajo a la izquierda, 4 abajo a la derecha) y dos filas con los 7 colores en las filas 15 y 16, justo en la unión de los dos paneles.
+
+```c
+// Programa temporal de prueba del mapeo de los dos paneles encadenados (32x32). El juego está en git (HEAD) y se restaurará después.
+#include "system_config.h"
+#include "panel.h"
+#include "graficos.h"
+
+int main(void)
+{
+    // Colores de la fila de prueba, de izquierda a derecha: rojo, verde, azul, amarillo, magenta, cian y blanco.
+    const uint32_t COLORES_DE_PRUEBA[7] = {
+        COLOR_ROJO,
+        COLOR_VERDE,
+        COLOR_AZUL,
+        COLOR_AMARILLO,
+        COLOR_MAGENTA,
+        COLOR_CIAN,
+        COLOR_BLANCO
+    };
+    // Primero el reloj, antes de usar cualquier periférico: deja el sistema a 84 MHz.
+    configurar_reloj();
+    // Se configuran los pines del panel como salidas.
+    configurar_panel();
+    // Se enciende TIM3: desde aquí la interrupción refresca el panel cada 1 ms, sin necesidad de llamarla desde main.
+    iniciar_refresco_panel();
+
+    // Marco verde alrededor de todo el tablero: la esquina superior izquierda en (0, 0) y el tamaño del tablero.
+    dibujar_rectangulo(0U, 0U, PANEL_ANCHO, PANEL_ALTO, COLOR_VERDE);
+    // Dígito 1 blanco en la esquina superior izquierda, a 2 píxeles del borde.
+    dibujar_digito(2U, 2U, 1U, COLOR_BLANCO);
+    // Dígito 2 blanco en la esquina superior derecha, a 2 píxeles del borde.
+    dibujar_digito(PANEL_ANCHO - 2U - FUENTE_ANCHO, 2U, 2U, COLOR_BLANCO);
+    // Dígito 3 blanco en la esquina inferior izquierda, a 2 píxeles del borde.
+    dibujar_digito(2U, PANEL_ALTO - 2U - FUENTE_ALTO, 3U, COLOR_BLANCO);
+    // Dígito 4 blanco en la esquina inferior derecha, a 2 píxeles del borde.
+    dibujar_digito(PANEL_ANCHO - 2U - FUENTE_ANCHO, PANEL_ALTO - 2U - FUENTE_ALTO, 4U, COLOR_BLANCO);
+
+    // Dos filas de colores en x = 12 a 18: la fila 15 es la última del panel 1 y la 16 es la primera del panel 2.
+    for (uint32_t i = 0U; i < 7U; i++) {
+        // Píxel de la fila 15 con el color i.
+        encender_pixel(12U + i, 15U, COLORES_DE_PRUEBA[i]);
+        // Píxel de la fila 16 con el mismo color i.
+        encender_pixel(12U + i, 16U, COLORES_DE_PRUEBA[i]);
+    }
+
+    // El refresco sigue por la interrupción de TIM3; main no hace nada más.
+    while (1) {
+    }
+}
+```
+
+### Tiempo de la interrupción con 128 bits
+- **Estimación previa:** con la cuenta del Paso 5 (~275 instrucciones por bit en `-O0`), una fase de 128 bits son ~35 200 instrucciones: ~0,42 ms con 1 ciclo por instrucción y hasta ~1,26 ms con los estados de espera de la FLASH. El periodo de TIM3 es 1 ms, así que el peor caso no cabría.
+- **Decisión de Daniela (1a):** probar primero sin cambiar nada.
+- **Medición aproximada:** se detuvo y reanudó el procesador 30 veces con `openocd`, y en **21 de 30** paradas estaba dentro de la interrupción de TIM3 (en `main`, 9). La interrupción ocupa **~70 % del tiempo**, es decir, ~0,7 ms por fase, y deja ~30 % al programa principal. Es una estimación por muestreo, no una medición exacta. **No se satura:** el peor caso estimado no ocurrió.
+- **Consecuencia:** con 64 bits, el Paso 5 estimaba la interrupción entre 210 y 320 µs por fase (21 a 32 % del tiempo); ahora ocupa más del doble y `main` dispone de ~30 % del tiempo. A 200 ms por paso de la serpiente, es suficiente.
+
+### Diagnóstico con el depurador (qué se hizo)
+El juego se reiniciaba sin parar y los botones no respondían. Para encontrar la causa sin cambiar el programa grabado, el agente principal leyó la memoria y los registros de la placa con `openocd` (el mismo que graba, conectándose por SWD) con `mem2array`, **sin detener el programa**:
+- **Las variables del juego** (`longitud`, `en_marcha`, `puntaje`…) y el **framebuffer** completo, volcado dos veces con `dump_image`. Había 3 píxeles verdes (la serpiente) y **una manzana que cambiaba de lugar** entre volcados: `iniciar_juego` se estaba llamando una y otra vez.
+- **Un breakpoint en `iniciar_juego`**, contando cuántas veces se llamaba (cada ~10 ms) y leyendo `GPIOA->IDR` (en `0x40020010`) en cada una: **PA8, el botón F, valía 0 en las 20 llamadas**. Con `main.c` de entonces, F oprimido llama a `iniciar_juego` en cada vuelta.
+- **Muestreo de las entradas** leyendo `GPIOA->IDR`, `GPIOB->IDR` (`0x40020410`) y `GPIOC->IDR` (`0x40020810`) cientos de veces: ver la tabla de abajo.
+- **Se paró solo TIM3** (escribiendo 0 en `TIM3->CR1`, en `0x40000400`) para ver si el ruido dependía del refresco del panel.
+
+### Los problemas de hardware (en orden)
+**1. Ruido en PA8 (botón F).** Con el programa corriendo (refresco del panel activo), PA8 se leía como presionada ~33 % del tiempo:
+
+| Prueba | Resultado |
+|---|---|
+| 6 botones, programa corriendo (1500 lecturas) | A, B, C, D, E: 0 caídas. **F: 492 (33 %)** |
+| F con el refresco activo | 252 de 800 y 276 de 800 |
+| F con **TIM3 parado** (refresco detenido) | **0 de 800** |
+| CPU detenida (panel quieto) | 10 de 10 lecturas en 1 |
+| Configuración de PA8 | correcta: `MODER = 0xa8000000` (entrada) y `PUPDR = 0x64110000` (bits 17:16 = 01, pull-up) |
+
+Con esto se descartó el código y la configuración. Daniela probó también el código del Paso 10 (32×16) y tampoco respondía, así que **el problema era del cableado o de la masa**, no del cambio a 32×32. No se identificó cuál señal del panel se acopla a PA8, y la causa física exacta **no se conoce**.
+
+**2. Decisión sobre F.** Daniela decidió **quitar F por completo** (opción 1b) y **reiniciar con el botón azul de la placa (PC13)** (opción 2b), con el nombre `BOTON_REINICIO` (opción 2a). Con el botón azul el reinicio no depende del cableado del shield. Una prueba posterior mostró que **PA8 sigue con ruido (439 de 1000)** aunque no tenga ningún jumper, lo que confirma que no se debe usar.
+
+**3. Cableado del shield (C, D, E y los pares A–B).** Más tarde ningún botón respondía, y las lecturas en reposo daban C y D siempre en bajo (1000 de 1000), E a ratos y A y B subiendo y bajando juntos. Con **todos los jumpers del shield quitados**, A a E se leyeron sueltos (0 de 1000 en bajo), así que el problema estaba del lado del shield y de sus jumpers, no en la Nucleo. Daniela rehízo las conexiones (dijo que reconectó el 5 V) y los botones volvieron a responder. **No se identificó cuál cable fallaba.**
+
+**4. Direcciones intercambiadas.** Con los botones ya funcionando, Daniela vio que arriba iba a la izquierda, izquierda a arriba, abajo a la derecha y derecha hacia abajo: los cables habían quedado en pines distintos a los de antes. Se podía arreglar moviendo cuatro jumpers (opción a) o en el código (opción b); **Daniela eligió el código** (ver `pedir_direccion`).
+
+**5. El ST-LINK se desconectó de WSL dos veces** durante estas pruebas (`Error: open failed` al grabar). Se arregla con `usbipd attach --wsl --busid 1-5` en PowerShell de Windows (el busid se consulta con `usbipd list`).
+
+### Lo que el `revisor` comprobó
+- **Mapeo de 32×32:** en un programa de PC, con una copia de la lógica de `dibujar_fase`, en las 4 fases y los 128 bits cada uno de los 1024 píxeles se lee **exactamente una vez** y ningún acceso queda fuera de [0..31]×[0..31]. El bit 0 y el bit 16 de la fase 0 dan las coordenadas medidas, y el panel 1 coincide con la fórmula antigua en las 4 fases (0 diferencias).
+- **Botón de reinicio:** `leer_botones` da el resultado correcto en las 64 combinaciones de los 6 botones (0 errores); `configurar_pin` para PC13 no cambia los pines del panel; ningún otro código usa PC13.
+- **Remapeo:** las 16 combinaciones de A a D dan lo esperado (gana el último en el orden A, B, C, D), y la regla de 180° sigue funcionando con las direcciones nuevas.
+- Ninguna ronda requirió correcciones del `revisor`. Una pregunta suya (el `#define SALTO_DE_BITS` del programa de medición) se resolvió usando `PANEL_BITS_POR_BLOQUE`, que vale lo mismo y ya existía.
+
+### Límites conocidos (no son errores)
+- **Ruido en PA8 sin resolver:** la causa física exacta no se conoce. PA8 ya no se usa.
+- **Causa del fallo del shield sin identificar:** Daniela rehízo las conexiones y funcionó. Si el problema reaparece, hay que mirar los jumpers, el GND del shield y los cables del panel cerca de D2 a D7.
+- **La posición física de los botones (A izquierda, B abajo, C derecha, D arriba) se dedujo, no se verificó** con el diseño del shield.
+- **Alimentación:** el 5 V sale del cargador de 3 A, y con dos paneles el consumo máximo con todo en blanco podría pasar de ese valor. Por eso nunca se llenó el panel de color: solo se encienden unos pocos píxeles. Esto es una **estimación** (ver `docs/conexiones.md`); no se midió el consumo.
+- **El tiempo de la interrupción** (~70 %) es una estimación por muestreo.
+- **El costo de `buscar_celda_libre` cerca del tablero lleno** (estimado en el Paso 9 en ~0,35 s en 32×32) no se midió, y ahora `main` corre más lento. Es un caso extremo.
+- **Reiniciar mantenido:** reinicia en cada vuelta mientras se oprime el botón azul, con el parpadeo del Paso 7.
+- **No se verificó el brillo:** Daniela decidió dejarlo (Paso 10).
+- `.vscode/c_cpp_properties.json` solo existe en el equipo de Daniela.
+
+### Modificaciones y correcciones
+- El agente principal dijo primero que la copia de la pantalla de prueba estaba en el scratchpad; el scratchpad se limpió y se recreó desde el historial de la sesión (es el código de arriba).
+- El `programador` dejó en el programa de medición un `#define SALTO_DE_BITS 16U`; por decisión de Daniela se cambió por `PANEL_BITS_POR_BLOQUE`.
+- `PANEL_BITS_POR_CADENA` y `dibujar_fase_de_prueba` se quitaron al terminar la medición (no quedan en el repo).
+
+### Decisiones tomadas
+| Pregunta | Opciones | Decisión de Daniela |
+|---|---|---|
+| Alimentación de los dos paneles | Mismo cargador de 3 A con pocos píxeles; un cargador por panel; otra | Mismo cargador de 3 A, con pocos píxeles encendidos |
+| Disposición física | Panel 2 encima; debajo; lado a lado | Panel 2 **debajo**, y está **girado 180°** |
+| Cómo medir el mapeo | Un programa que enciende un bit (A y B); o solo avanzar solo | Un programa que enciende un bit, con botones |
+| Opciones técnicas de la medición | G1 y R2 a la vez; fases con C y D; función nueva y `main.c` aparte | Las recomendadas |
+| Saltos de bit | Solo A y B en pasos de 1; agregar E y F de 16 | Agregar E y F de ±16 |
+| `SALTO_DE_BITS` como macro nueva | Dejarla o usar `PANEL_BITS_POR_BLOQUE` | Usar `PANEL_BITS_POR_BLOQUE` |
+| Repetir la medición del bit 8 tras el rebote | Seguir con la fórmula y verificar con una pantalla de prueba, o medir más | Seguir sin repetir |
+| Tiempo de la interrupción con 128 bits | Probar sin cambiar nada; periodo de 2 ms; caché de la FLASH; `-O1` | Probar sin cambiar nada |
+| Cómo verificar el mapeo 32×32 | Pantalla de prueba temporal; o directamente con el juego | Pantalla de prueba temporal |
+| Qué hacer con el botón F | Quitarlo solo de `main.c`; quitarlo también de `botones.c` | Quitarlo por completo de `botones.c` |
+| Cómo reiniciar la partida | Botón negro RESET; botón azul PC13 | Botón azul PC13 |
+| Nombre del bit 5 | `BOTON_REINICIO` o `BOTON_AZUL` | `BOTON_REINICIO` |
+| Direcciones tras mover los cables | Mover cuatro jumpers (a) o cambiar el código (b) | Cambiar el código (b) |
+| Archivo del editor `.vscode` | Crearlo o reiniciar IntelliSense | Crearlo |
+
+### Cómo se probó
+- `make clean && make`: 0 advertencias en cada ronda. Tamaño final de `arm-none-eabi-size`: `text 5022`, `data 8`, `bss 3144` (en 32×16 era `bss 1608`: el framebuffer pasó a 1024 bytes y el cuerpo a 2048).
+- Simulaciones del `revisor` en un programa de PC (ver arriba).
+- **Pantalla de prueba (2026-11-20):** `make flash` con el `main.c` temporal. Daniela confirmó que los dígitos 1, 2, 3 y 4 están en sus esquinas y se leen derechos, que el marco verde está completo (incluida la unión de los dos paneles), que las dos filas de colores se ven seguidas en la unión y que la imagen es estable. Con eso quedó comprobado todo el mapeo.
+- **Juego en 32×32:** `make flash` con el juego. Primero se reinició sin parar (problema 1), luego los botones no respondían (problemas 2 y 3) y después las direcciones estaban intercambiadas (problema 4). Tras el remapeo, `make flash` terminó con `Verified OK` y Daniela confirmó que **ya funciona**. No se detalló prueba por prueba (pausa con E, botón azul, puntaje, veneno).
+
+### Errores encontrados y cómo se resolvieron
+- **El juego se reiniciaba sin parar:** ruido en PA8. Se quitó el botón F y el reinicio pasó al botón azul.
+- **Los botones no respondían:** cableado del shield. Daniela rehízo las conexiones.
+- **Las direcciones salían intercambiadas:** se cambió en `pedir_direccion`.
+- **`Error: open failed` al grabar:** el ST-LINK se había desconectado de WSL; se reconectó con `usbipd attach`.
+- **Falso error `NUMERO_ANCHO is undefined` de VS Code:** era del analizador del editor, no del compilador; se creó `.vscode/c_cpp_properties.json` con `-Iinc`.
+
+### Preguntas de autoevaluación
+1. En la cadena de dos paneles, ¿a cuál panel van los bits 0 a 63 y por qué?
+   Al panel 2 (el más lejano a la placa). El primer bit que se envía se va empujando por los dos registros de desplazamiento y termina en el último paso de la cadena; los últimos 64 quedan en el panel conectado a la placa.
+2. El panel 2 está girado 180°. ¿Cómo se pasa de su posición local `(x, y)` a la columna y la fila del tablero?
+   Columna `31 − x`, fila `31 − y` para R1G1B1 y `31 − (y + 8)` (que es `23 − y`) para R2G2B2. Con las constantes: `PANEL_ANCHO − 1 − x`, `PANEL_ALTO − 1 − y` y `PANEL_ALTO − 1 − (y + 8)`.
+3. El juego se reiniciaba sin parar. ¿Qué lo causaba y cómo se descubrió sin cambiar el programa?
+   La entrada PA8 (el botón F) se leía como presionada a ratos por ruido del panel, y `main` reinicia el juego en cada vuelta en la que ve ese botón. Se descubrió leyendo con `openocd` el framebuffer (la manzana cambiaba de lugar), poniendo un breakpoint en `iniciar_juego` y leyendo `GPIOA->IDR`, y parando TIM3 para ver que sin refresco no había ruido.
+4. ¿Por qué se quitó el botón F y qué lo reemplaza? ¿Qué pasa con la semilla del LFSR al reiniciar?
+   Porque su línea recibía ruido del panel. Lo reemplaza el botón azul de la placa (PC13), que no depende del cableado del shield. Como no se reinicia el programa, el LFSR no se resiembra y la primera manzana de la partida nueva es aleatoria.
+5. Con 128 bits por fase, ¿cuánto ocupa la interrupción de TIM3 y qué pasaría si tardara más de 1 ms?
+   ~70 % del tiempo (~0,7 ms por fase, estimado por muestreo). Si tardara más de 1 ms, TIM3 volvería a interrumpir en cuanto termina, `main` casi no correría y los botones dejarían de responder.
 
 ## Resumen de sustentación
 Al final del proyecto: mapa de memoria, tabla de pines, mapeo de píxeles, cálculo del reloj y de los timers, y diagrama del flujo del juego.
