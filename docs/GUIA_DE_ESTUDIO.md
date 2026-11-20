@@ -6512,6 +6512,7 @@ En el camino aparecieron dos problemas de hardware (ruido en el botón F y cable
 - `inc/botones.h` y `src/botones.c` (modificados): se quita el botón F (PA8) y el bit 5 pasa a ser `BOTON_REINICIO`, el botón azul de la placa (PC13).
 - `main.c` (modificado): reinicia con `BOTON_REINICIO`.
 - `src/snake.c` e `inc/snake.h` (modificados): `pedir_direccion` asigna otras direcciones a los botones A a D, y los comentarios de `DIRECCION_*` cambian.
+- `docs/mapeo_pixeles.md` (modificado, en un commit aparte): documenta la cadena de dos paneles, el reparto de los 128 bits, el panel 2 girado 180° y los puntos medidos.
 - `.vscode/c_cpp_properties.json` (nuevo, **no se versiona**: `.vscode/` está en `.gitignore`): le dice al editor dónde están los headers (`-Iinc`) para que no marque falsos errores. No afecta la compilación.
 - Los pasos anteriores mostraban versiones anteriores de estos archivos: los que aparecen en esas secciones son las **versiones de sus pasos** (ver las notas en cada una).
 
