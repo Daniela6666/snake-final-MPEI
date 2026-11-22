@@ -3,13 +3,8 @@
 Requisito 10 del curso: todo uso de IA debe quedar documentado (herramienta, propósito y qué código se generó). Cada entrada se agrega en el mismo commit en que entra el código o documento.
 
 ## Declaración general
-- **Chat y Cowork (entradas 1 y 2):** elegir la conexión del panel, diagnosticar por qué no encendía y medir su mapeo en un repositorio anterior (su código no se reutiliza), y analizar los ejemplos del profesor y armar el plan.
-- **Agente principal (Claude Code, Sonnet 5.5):** coordinó el trabajo, nos hizo las preguntas de diseño, escribió directamente el `Makefile` (entrada 3) y la guía de estudio, y en cada paso recompiló, grabó la placa (`make flash`) y aplicó correcciones menores por decisión nuestra.
-- **Subagente `programador` (Haiku):** escribió el código del firmware desde la pieza 4 del paso 1 hasta el paso 11 (entradas 4 a 14).
-- **Subagente `revisor` (Sonnet):** revisó y verificó ese código (compiló, comprobó pines y offsets, lo simuló en programas de PC). Solo cambió comentarios, en las entradas 5 y 12.
-- **Lo que decidimos y hicimos nosotros:** el diseño (pines, reglas del juego, tiempos, nombres y estructura), las respuestas a las preguntas de Claude Code, el cableado, la medición del mapeo de los dos paneles (entrada 14) y la prueba de cada paso en la placa.
-- Las mediciones con osciloscopio y la carpeta de pruebas se publican aparte, con sus propias entradas.
-- Los commits no llevan firma de la herramienta: el uso de IA se declara solo aquí.
+- Haiku escribió el código que se le solicitó (entradas 4 a 14) y Sonnet revisó y verificó ese código.
+- La guía de estudio (`docs/GUIA_DE_ESTUDIO.md`) la escribió Claude Code (Sonnet 5.5).
 
 La columna "Revisión propia" la completan los integrantes del equipo.
 
