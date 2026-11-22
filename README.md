@@ -1,33 +1,40 @@
-# Snake en panel P10 RGB — NUCLEO-F446RE (bare metal)
+# Snake en paneles P10 RGB (NUCLEO-F446RE)
 
-Proyecto final de Microprocesadores e Interfaces (Ingeniería Electrónica, MPEI 2026-2). Juego Snake en paneles P10 RGB de 32x16: primero un panel (32x16) y, cuando el juego funcione, dos paneles encadenados (32x32), controlado con los botones de un Joystick Shield V1.A, programado sin HAL ni CMSIS: todos los periféricos se manejan escribiendo registros.
+Proyecto final de Microprocesadores e Interfaces (Ingeniería Electrónica, MPEI 2026-2).
+Juego Snake de 32×32 píxeles en dos paneles P10 RGB, programado sin librerías de ST (sin HAL ni CMSIS): todos los periféricos se manejan escribiendo sus registros.
 
-Integrantes: Daniela y Daniel (completar con nombres completos).
+**Integrantes:** Daniela Molina López y Daniel Martinez Fontecha.
 
-## Reglas del juego
-- La serpiente crece al comer comida.
-- Se achica al comer veneno.
-- No hay límite de longitud (cabe hasta en todos los píxeles del tablero: 512 con un panel, 1024 con dos).
-- Al terminar el juego se muestra el puntaje.
+## Cómo se juega
+| Botón | Pin | Acción |
+|---|---|---|
+| A | PA10 | Izquierda |
+| B | PB3 | Abajo |
+| C | PB5 | Derecha |
+| D | PB4 | Arriba |
+| E | PB10 | Pausa (mientras se mantiene presionado) |
+| Azul de la placa | PC13 | Reiniciar |
 
-## Hardware
-- Placa NUCLEO-F446RE (Cortex-M4).
-- Módulos P10 RGB exterior 32x16, HUB75, escaneo 1/4, alimentados con 5 V externos. Ahora hay 1; el segundo se agrega en el paso 11.
-- Joystick Shield V1.A (solo se usan los botones).
+- Serpiente **verde**. Manzana **roja**: +1 punto y la serpiente crece 1 segmento.
+- Veneno **azul**: −2 puntos y la serpiente pierde 2 segmentos. Aparece y desaparece solo.
+- El juego termina al chocar con una pared o con el propio cuerpo, y el panel muestra el puntaje.
 
-Conexiones completas en [`docs/conexiones.md`](docs/conexiones.md).
+## Qué se necesita
+- Placa NUCLEO-F446RE, 2 paneles P10 RGB 32×16 (HUB75), Joystick Shield V1.A y una fuente de 5 V para los paneles.
+- `arm-none-eabi-gcc` 10.3.1, `make` 4.3 y `openocd` 0.11.0 (las versiones con las que se probó, en Linux sobre WSL2).
 
-## Estructura
+Las conexiones están en [`docs/conexiones.md`](docs/conexiones.md).
+
+## Compilar y grabar
+```bash
+cd juego
+make          # compila y genera snake.elf
+make flash    # graba la placa con OpenOCD y el ST-LINK
 ```
-CLAUDE.md          contexto y reglas para Claude Code
-PLAN.md            plan paso a paso
-AI_USO.md          registro del uso de IA (requisito del curso)
-docs/              guía de estudio, conexiones y mapeo de píxeles
-inc/  src/         código fuente (se llena a partir del paso 1)
-```
 
-## Cómo compilar y grabar
-Se completa en el paso 1, cuando existan el `Makefile`, el linker y `crt0.S`. Requisitos previstos: `arm-none-eabi-gcc`, `make` y `openocd` (o `st-flash`) con el ST-LINK de la placa.
-
-## Estado
-Paso 0 (repositorio y documentos) hecho. Siguiente: paso 1, ver [`PLAN.md`](PLAN.md).
+## Carpetas
+| Carpeta | Contenido |
+|---|---|
+| `juego/` | El juego definitivo, con el reloj, el GPIO y los demás módulos |
+| `docs/` | Conexiones, mapeo de píxeles y guía de estudio |
+| `AI_USO.md` | Registro del uso de IA |
