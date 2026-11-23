@@ -1,0 +1,220 @@
+// Se incluye su propia interfaz (panel.h) para que el compilador compruebe que las funciones coinciden con sus prototipos.
+#include "panel.h"
+
+// Divisor de TIM3: 84 MHz / (83 + 1) = 1 MHz, es decir, el contador avanza una cuenta cada 1 µs.
+#define TIM3_PRESCALER 83U
+// Valor de recarga de TIM3: 1 MHz / (999 + 1) = 1 kHz, es decir, una interrupción cada 1 ms.
+#define TIM3_AUTORRECARGA 999U
+
+// Imagen del tablero: un color por píxel, indexado [y][x]. Los bits 0 a 2 son R, G y B.
+// volatile porque la interrupción de TIM3 lee este arreglo mientras main lo escribe.
+// Está en .bss, así que empieza en 0 (COLOR_NEGRO).
+static volatile uint8_t framebuffer[PANEL_ALTO][PANEL_ANCHO];
+// Fase que se dibuja en la siguiente interrupción de TIM3. Solo la usa la interrupción, por eso no necesita volatile.
+static uint32_t fase_actual = 0U;
+
+// Configura un pin del panel (puerto C) como salida push-pull, sin resistencia, con velocidad alta.
+static void configurar_salida_del_panel(uint32_t pin)
+{
+    // Datos de configuración del pin del panel.
+    ConfiguracionPin configuracion;
+    // Modo salida: el microcontrolador maneja el pin y saca el nivel que se le escriba.
+    configuracion.modo = MODO_SALIDA;
+    // Número del pin dentro del puerto C.
+    configuracion.pin = pin;
+    // Sin pull-up ni pull-down: el pin lo domina solo la salida.
+    configuracion.resistencia = RESISTENCIA_NINGUNA;
+    // Velocidad alta: los flancos de CLK y LAT tienen que ser rápidos.
+    configuracion.velocidad = VELOCIDAD_ALTA;
+    // AF0: no se usa, el pin no es de función alterna.
+    configuracion.funcion_alterna = 0U;
+    // Se escribe la configuración en el puerto C.
+    configurar_pin(GPIOC, configuracion);
+}
+
+// Desplaza un bit por los seis colores. datos lleva en sus bits 0 a 5 los valores de R1, G1, B1, R2, G2 y B2.
+static void desplazar_bit(uint32_t datos)
+{
+    // R1 sale por PC0: se toma el bit 0 de datos (el desplazamiento es el número del pin).
+    escribir_pin(GPIOC, PIN_PANEL_R1, (datos >> PIN_PANEL_R1) & 1U);
+    // G1 sale por PC1: se toma el bit 1 de datos.
+    escribir_pin(GPIOC, PIN_PANEL_G1, (datos >> PIN_PANEL_G1) & 1U);
+    // B1 sale por PC2: se toma el bit 2 de datos.
+    escribir_pin(GPIOC, PIN_PANEL_B1, (datos >> PIN_PANEL_B1) & 1U);
+    // R2 sale por PC3: se toma el bit 3 de datos.
+    escribir_pin(GPIOC, PIN_PANEL_R2, (datos >> PIN_PANEL_R2) & 1U);
+    // G2 sale por PC4: se toma el bit 4 de datos.
+    escribir_pin(GPIOC, PIN_PANEL_G2, (datos >> PIN_PANEL_G2) & 1U);
+    // B2 sale por PC5: se toma el bit 5 de datos.
+    escribir_pin(GPIOC, PIN_PANEL_B2, (datos >> PIN_PANEL_B2) & 1U);
+    // CLK en 1: el panel toma el bit de los pines de color en este flanco de subida.
+    escribir_pin(GPIOC, PIN_PANEL_CLK, 1U);
+    // CLK en 0: deja CLK listo para el siguiente bit.
+    escribir_pin(GPIOC, PIN_PANEL_CLK, 0U);
+}
+
+// Configura los pines del panel. Primero se dejan en un nivel seguro y después pasan a salida.
+void configurar_panel(void)
+{
+    // Se enciende el reloj del puerto C antes de escribir sus registros.
+    habilitar_reloj_puerto(GPIOC);
+    // OE apagado antes de ser salida: el panel no debe mostrar basura mientras se configura.
+    escribir_pin(GPIOC, PIN_PANEL_OE, NIVEL_OE_APAGADO);
+    // CLK en 0 antes de ser salida: el reset deja ODR en 0, pero se escribe por claridad.
+    escribir_pin(GPIOC, PIN_PANEL_CLK, 0U);
+    // LAT en 0 antes de ser salida: el panel no debe cargar datos mientras se configura.
+    escribir_pin(GPIOC, PIN_PANEL_LAT, 0U);
+    // R1 como salida.
+    configurar_salida_del_panel(PIN_PANEL_R1);
+    // G1 como salida.
+    configurar_salida_del_panel(PIN_PANEL_G1);
+    // B1 como salida.
+    configurar_salida_del_panel(PIN_PANEL_B1);
+    // R2 como salida.
+    configurar_salida_del_panel(PIN_PANEL_R2);
+    // G2 como salida.
+    configurar_salida_del_panel(PIN_PANEL_G2);
+    // B2 como salida.
+    configurar_salida_del_panel(PIN_PANEL_B2);
+    // OE como salida.
+    configurar_salida_del_panel(PIN_PANEL_OE);
+    // LAT como salida.
+    configurar_salida_del_panel(PIN_PANEL_LAT);
+    // CLK como salida.
+    configurar_salida_del_panel(PIN_PANEL_CLK);
+    // A como salida (selección de fase).
+    configurar_salida_del_panel(PIN_PANEL_A);
+    // B como salida (selección de fase).
+    configurar_salida_del_panel(PIN_PANEL_B);
+}
+
+// Dibuja una fase completa con los colores del framebuffer. Los 128 bits de la fase son 2 módulos de 64 bits:
+//   modulo = bit / 64: 0 = panel 2 (abajo, el más lejano, girado 180 grados), 1 = panel 1 (arriba, conectado a la placa).
+//   bit_en_modulo = bit % 64; bloque = bit_en_modulo / 16, j = bit_en_modulo % 16.
+// Posición dentro del panel, según docs/mapeo_pixeles.md:
+//   si j < 8:  x = 8 * bloque + (7 - j), y = fase        (de derecha a izquierda)
+//   si j >= 8: x = 8 * bloque + (j - 8), y = fase + 4    (de izquierda a derecha)
+// R2, G2 y B2 usan la fila y + 8 dentro del panel.
+// Panel 2 girado 180 grados: columna = 31 - x, fila = 31 - y (y 31 - (y + 8) para R2, G2 y B2).
+static void dibujar_fase(uint32_t fase)
+{
+    // Se desplazan los 128 bits de la fase, uno por uno, con CLK.
+    for (uint32_t bit = 0U; bit < PANEL_BITS_POR_FASE; bit++) {
+        // Módulo al que pertenece el bit: 0 = panel 2 (abajo), 1 = panel 1 (arriba).
+        uint32_t modulo = bit / PANEL_BITS_POR_MODULO;
+        // Posición del bit dentro de su módulo (0 a 63).
+        uint32_t bit_en_modulo = bit % PANEL_BITS_POR_MODULO;
+        // Bloque de 16 bits al que pertenece el bit dentro del módulo (0 a 3).
+        uint32_t bloque = bit_en_modulo / PANEL_BITS_POR_BLOQUE;
+        // Posición del bit dentro de su bloque (0 a 15).
+        uint32_t j = bit_en_modulo % PANEL_BITS_POR_BLOQUE;
+        // Columna del píxel de la mitad de arriba dentro del panel.
+        uint32_t x;
+        // Fila del píxel de la mitad de arriba dentro del panel.
+        uint32_t y;
+        // Mitad j < 8: las columnas van de derecha a izquierda y la fila es la de la fase.
+        if (j < PANEL_COLUMNAS_POR_BLOQUE) {
+            // Columna x: inicio del bloque más la posición contada de derecha a izquierda.
+            x = PANEL_COLUMNAS_POR_BLOQUE * bloque + (PANEL_COLUMNAS_POR_BLOQUE - 1U - j);
+            // La fila es la de la fase.
+            y = fase;
+        // Mitad j >= 8: las columnas van de izquierda a derecha y la fila es la de la fase + 4.
+        } else {
+            // Columna x: inicio del bloque más la posición contada de izquierda a derecha.
+            x = PANEL_COLUMNAS_POR_BLOQUE * bloque + (j - PANEL_COLUMNAS_POR_BLOQUE);
+            // La fila es la de la fase más 4.
+            y = fase + PANEL_SEPARACION_FILAS;
+        }
+        // Columna y filas en el tablero completo de 32x32.
+        uint32_t columna;
+        // Fila de la mitad superior del panel (la de los bits R1, G1, B1).
+        uint32_t fila_superior;
+        // Fila de la mitad inferior del panel (la de los bits R2, G2, B2).
+        uint32_t fila_inferior;
+        // Panel 1 (arriba): sin giro, la fila de abajo es la fila de arriba + 8.
+        if (modulo == 1U) {
+            // Sin giro: la columna es la x.
+            columna = x;
+            // La fila superior es la y.
+            fila_superior = y;
+            // La fila inferior está 8 filas más abajo.
+            fila_inferior = y + PANEL_FILAS_MITAD_SUPERIOR;
+        // Panel 2 (abajo, girado 180 grados): la columna y las filas se cuentan desde el otro lado.
+        } else {
+            // Girado 180°: la columna se cuenta desde el borde contrario.
+            columna = (PANEL_ANCHO - 1U) - x;
+            // La fila superior se cuenta desde abajo.
+            fila_superior = (PANEL_ALTO - 1U) - y;
+            // La fila inferior también se cuenta desde abajo.
+            fila_inferior = (PANEL_ALTO - 1U) - (y + PANEL_FILAS_MITAD_SUPERIOR);
+        }
+        // datos: bits 0 a 2 = R1, G1, B1 (fila superior); bits 3 a 5 = R2, G2, B2 (fila inferior), desplazados 3 posiciones.
+        uint32_t datos = framebuffer[fila_superior][columna] | (framebuffer[fila_inferior][columna] << PANEL_DESPLAZAMIENTO_MITAD_INFERIOR);
+        // Se desplazan los 6 bits de color de este píxel.
+        desplazar_bit(datos);
+    }
+    // OE apagado mientras cambian LAT y la fase: así no se ve basura durante el cambio.
+    escribir_pin(GPIOC, PIN_PANEL_OE, NIVEL_OE_APAGADO);
+    // LAT en 1: el latch pasa los 128 bits desplazados a la salida. Va después de desplazar todos los bits.
+    escribir_pin(GPIOC, PIN_PANEL_LAT, 1U);
+    // LAT en 0: termina el pulso de latch.
+    escribir_pin(GPIOC, PIN_PANEL_LAT, 0U);
+    // A toma el bit 0 de la fase (selección de fila dentro del escaneo 1/4).
+    escribir_pin(GPIOC, PIN_PANEL_A, fase & 1U);
+    // B toma el bit 1 de la fase.
+    escribir_pin(GPIOC, PIN_PANEL_B, (fase >> 1U) & 1U);
+    // OE encendido: el panel muestra la fase recién cargada.
+    escribir_pin(GPIOC, PIN_PANEL_OE, NIVEL_OE_ENCENDIDO);
+}
+
+// Guarda el color de un píxel en el framebuffer. Si x o y están fuera del tablero, no hace nada:
+// escribir fuera del arreglo dañaría otra zona de la memoria.
+void encender_pixel(uint32_t x, uint32_t y, uint32_t color)
+{
+    // Solo se escribe si x está dentro de las columnas y y dentro de las filas del tablero.
+    if (x < PANEL_ANCHO && y < PANEL_ALTO) {
+        // Se guarda el color en 3 bits (R = bit 0, G = bit 1, B = bit 2). Cabe en uint8_t sin perder datos.
+        framebuffer[y][x] = (uint8_t)color;
+    }
+}
+
+// Enciende TIM3 para que interrumpa cada 1 ms. Cada interrupción dibuja una fase del panel.
+void iniciar_refresco_panel(void)
+{
+    // (a) Se enciende el reloj de TIM3 en el bus APB1. |= no cambia los demás bits de RCC->APB1ENR.
+    RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
+    // Variable que solo sirve para leer el registro; el valor leído no se usa.
+    volatile uint32_t lectura_descartada;
+    // Dos lecturas después de habilitar el reloj, como en habilitar_reloj_puerto: el periférico necesita unos ciclos antes de usarse.
+    lectura_descartada = RCC->APB1ENR;
+    // Lectura de espera: da unos ciclos para que el reloj de TIM3 se estabilice antes de usarlo.
+    lectura_descartada = RCC->APB1ENR;
+    // El valor leído no se usa: (void) le dice al compilador que se descarta a propósito (evita la advertencia).
+    (void)lectura_descartada;
+    // (b) Divisor y valor de recarga: el contador cuenta de 0 a 999 con un reloj de 1 MHz, es decir, 1 ms.
+    TIM3->PSC = TIM3_PRESCALER;
+    // Valor de recarga ARR: el contador cuenta de 0 a ARR y entonces genera la interrupción.
+    TIM3->ARR = TIM3_AUTORRECARGA;
+    // (c) UG carga PSC y ARR en el momento; sin esto, el divisor nuevo esperaría a la primera actualización.
+    TIM3->EGR = TIM_EGR_UG;
+    // (d) Se limpia el UIF que dejó UG: se escribe 0 en ese bit y 1 en los demás (rc_w0 no cambia con 1).
+    TIM3->SR = ~TIM_SR_UIF;
+    // (e) Se habilita la interrupción de actualización de TIM3 (UIE).
+    TIM3->DIER |= TIM_DIER_UIE;
+    // (f) Se habilita la IRQ 29 en el NVIC. Escribir 0 en los demás bits no cambia nada, por eso no hace falta leer ISER0.
+    NVIC->ISER0 = (1U << NUMERO_INTERRUPCION_TIM3);
+    // (g) Se enciende el contador de TIM3 (CEN). A partir de aquí llegan interrupciones cada 1 ms.
+    TIM3->CR1 |= TIM_CR1_CEN;
+}
+
+// Manejador de la interrupción de TIM3. El nombre es el de la tabla de vectores de crt0.S, así que reemplaza al alias débil.
+// Se ejecuta cada 1 ms y dibuja una fase (0, 1, 2, 3, 0...): cada fase se repite 250 veces por segundo.
+void TIM3_IRQHandler(void)
+{
+    // Se limpia la causa de la interrupción (UIF) escribiendo 0 en ese bit; si no, la interrupción se repetiría sin fin.
+    TIM3->SR = ~TIM_SR_UIF;
+    // Se dibuja la fase actual con los colores que hay en el framebuffer.
+    dibujar_fase(fase_actual);
+    // Se pasa a la siguiente fase. % PANEL_FASES hace que después de la fase 3 vuelva a la 0.
+    fase_actual = (fase_actual + 1U) % PANEL_FASES;
+}
