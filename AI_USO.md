@@ -26,6 +26,7 @@ La columna "Revisión propia" la completan los integrantes del equipo.
 | 14 | 2026-11-20 | Claude Code: `programador` (Haiku) y `revisor` (Sonnet) | Paso 11: segundo panel (32×32). Claude ayudó a mapear los dos paneles, con las mediciones que hicimos nosotros, y con eso supimos cómo expandir la pantalla | `panel.*`, `botones.*`, `snake.*` y `main.c`. Los escribió `programador` (Haiku); `revisor` (Sonnet) los revisó sin cambios | Pendiente de completar |
 | 15 | 2026-11-20 | Claude Code (Sonnet 5.5) | Actualizar `docs/mapeo_pixeles.md` con el mapeo de los dos paneles que medimos | `docs/mapeo_pixeles.md`. Lo escribió y revisó el agente principal | Pendiente de completar |
 | 16 | 2026-11-22 | Claude Code (Sonnet 5.5) | Ayudó a organizar el repositorio de entrega (carpetas, README y documentos, limpieza del historial de commits). La estructura fue decisión del grupo | Estructura del repositorio, `README.md`, `docs/conexiones.md` y `docs/mapeo_pixeles.md`; sin cambios en el código | Pendiente de completar |
+| 17 | 2026-11-24 | Claude (Sonnet 5.5) | Sintetizó la exposición | `entregables/presentacion_Snake_P10_10_min.pdf` | Pendiente de completar |
 
 Desde el paso 1 cada entrada indica además qué modelo escribió el código (`programador`), qué modelo lo revisó (`revisor`) y qué correcciones hizo.
 
