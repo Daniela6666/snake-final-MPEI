@@ -6523,6 +6523,58 @@ Cadena de registros de desplazamiento (dos paneles son un solo registro largo), 
 
 **Fuentes:** no hay datos nuevos del RM0390. El mapeo del panel 2 es una **medición de Daniela** (ver más abajo) y las direcciones de los registros GPIO que se leyeron con el depurador (IDR en el desplazamiento `0x10`) son las ya definidas en `inc/registros_f446.h`.
 
+### Cómo se integró la segunda pantalla (de principio a fin)
+Resumen de todo el proceso en el orden en que ocurrió. Cada etapa se explica con detalle en las secciones de abajo; aquí se ve cómo encajan.
+
+**1. Montaje físico.**
+- El **panel 2 va debajo del panel 1 y girado 180°** (decisión de Daniela, ver «Decisiones tomadas»).
+- La Nucleo sigue conectada **solo al IN del panel 1**, con los mismos 11 pines de siempre (`docs/conexiones.md`). **No se usó ningún pin nuevo.**
+- El **OUT del panel 1 va al IN del panel 2** con un segundo cable plano: así los datos que salen del panel 1 entran al panel 2.
+- Cada panel recibe **5 V externos** en sus cables rojo (+5 V) y negro (GND), y el GND de la fuente se une al de la Nucleo. No se alimenta desde el pin 5 V de la Nucleo.
+
+```
+Nucleo ──(11 señales)──► IN [ Panel 1, arriba ] OUT ──(cable plano)──► IN [ Panel 2, abajo, girado 180° ] OUT
+                              bits 64 a 127                                       bits 0 a 63
+```
+
+**2. Primer síntoma.** Con el código del Paso 10, que solo envía **64 bits por fase**, la imagen salió **duplicada** en el panel 2. Es decir, el panel 2 recibía datos, pero no los que le correspondían (explicación probable, no comprobada).
+
+**3. Idea.** Dos paneles en serie son **un solo registro de desplazamiento de 128 pasos**: hay que enviar **128 bits por fase** (ver «Cómo funciona la cadena de dos paneles»). Los primeros 64 llegan al panel 2 y los últimos 64 se quedan en el panel 1.
+
+**4. Medir en vez de suponer.** Se escribió un programa temporal que enciende **un solo bit** de la cadena con G1 y R2 a la vez, y se anotó en qué píxel aparecía (ver «Medición del mapeo del panel 2»). Ese programa **no se guardó al terminar**; hoy existe una reconstrucción en [`pruebas/08_orden_serial_paneles`](../pruebas/08_orden_serial_paneles/README.md).
+
+**5. Fórmula.** Con las dos mediciones (bits 0 y 16) y la fórmula del panel 1 se dedujo el mapeo del panel 2: **columna `31 − x` y filas `31 − y` y `23 − y`** (giro de 180°).
+
+**6. Cambios en el código.** Cambiaron `panel.h` y `panel.c` (`PANEL_ALTO` 32, 128 bits por fase, `dibujar_fase` con el reparto entre módulos), y `botones.*`, `snake.*` y `main.c` por los problemas de los botones (ver «Los problemas de hardware»). Lo demás no cambió: los 11 pines, el reloj de 84 MHz, TIM3 cada 1 ms, `desplazar_bit`, la secuencia OE, LAT, A y B, y los módulos de gráficos y aleatorio. El framebuffer pasó de 512 a 1024 bytes y el cuerpo de la serpiente de 512 a 1024 posiciones (`CAPACIDAD_CUERPO = PANEL_ANCHO × PANEL_ALTO`).
+
+**7. Verificación.** En cuatro niveles:
+- **Simulación del `revisor`:** en las 4 fases y los 128 bits cada píxel de los 1024 se escribe exactamente una vez.
+- **Pantalla de prueba en la placa:** marco verde completo (incluida la unión de los dos paneles), un dígito en cada esquina y los 7 colores en la unión. Hoy existe una reconstrucción en [`pruebas/09_pantalla_32x32`](../pruebas/09_pantalla_32x32/README.md).
+- **Juego completo** funcionando en los 32×32 (ver [`entregables/juego_funcionando.mp4`](../entregables/juego_funcionando.mp4)).
+- **Osciloscopio (2026-11-21, Hantek 6022BE):** confirma en los pines lo que dice el código (ver abajo).
+
+#### Lo que se vio después con el osciloscopio
+Las mediciones están en [`mediciones/`](../mediciones/README.md), con el firmware del juego definitivo (dos paneles):
+
+| Qué se comprobó | Resultado medido |
+|---|---|
+| Pulsos de CLK por fase | **128**, sin pausa en medio: coincide con `PANEL_BITS_POR_FASE = 128` ([captura 1](../mediciones/01_captura1_clk_lat/README.md)) |
+| Periodo del CLK | ~6,1 µs (~164 kHz) |
+| Duración de la ráfaga de 128 bits | ~772 µs, con una pausa de ~208 µs hasta la siguiente |
+| Periodo de LAT (una fase) | ~980 µs; el diseño es 1000 µs (TIM3 cada 1 ms). Probable causa: el oscilador interno HSI no es exacto (no se verificó) |
+| Secuencia al final de cada ráfaga | OE sube, pulso de LAT, cambian A y B, OE baja: **coincide con `dibujar_fase`** ([captura 2](../mediciones/02_captura2_clk_oe/README.md) y [secuencia de una fase](../mediciones/07_secuencia_de_una_fase/README.md)) |
+| Tiempo con el panel encendido | OE en alto solo ~2,5 µs por fase: el panel está encendido ~99,7 % del tiempo |
+
+- **Tiempo de la interrupción:** la estimación por muestreo del depurador era ~70 %. Con el osciloscopio, la ráfaga ocupa **772 de 980 µs, ~79 %**. Es más preciso que el muestreo y confirma que **no se satura**, pero deja a `main` poco más del 20 % del tiempo. Con 64 bits eran ~21 a 32 % (estimación del Paso 5).
+- **Alimentación:** con multímetro se midieron **0,65 A a 4,94 V con el panel solo en rojo** ([mediciones/08_alimentacion](../mediciones/08_alimentacion/README.md)). La fuente no permitió probar otros colores ni pantalla blanca, así que **no se debe extrapolar** a verde, azul o blanco.
+- **Lo que el osciloscopio no demuestra:** que la imagen duplicada del primer síntoma se debiera a lo explicado arriba. Esa explicación sigue siendo probable pero no comprobada.
+
+#### Preguntas de sustentación sobre la segunda pantalla
+1. **¿Por qué no se necesitaron pines nuevos para el segundo panel?** Porque los paneles van en serie: el OUT del panel 1 es el IN del panel 2. Las señales entran por el panel 1 y pasan al panel 2 por el cable plano del OUT al IN; solo cambia cuántos bits se envían (128 en lugar de 64).
+2. **¿Qué se midió para conocer el orden de los bits y por qué no bastó la fórmula del panel 1?** Un programa temporal encendió un bit de la cadena y se anotó dónde aparecía. El panel 2 está girado 180° y es el primero en recibir los bits, así que su mapeo no es el del panel 1.
+3. **¿Qué cambia si se agregara un tercer panel?** Cada fase tendría 192 bits, `PANEL_ALTO` pasaría a 48 y habría que medir su posición y giro. Además la interrupción tardaría 1,5 veces lo actual (192 bits en lugar de 128: 772 µs × 1,5 ≈ 1,16 ms), más que el periodo de TIM3 (~1 ms), así que habría que bajar el costo de `desplazar_bit` o subir el periodo de TIM3.
+4. **¿Cómo se comprobó que salen 128 pulsos y no 64?** Contando los pulsos de CLK en cada ráfaga con el osciloscopio (captura 1: 128).
+
 ### Cómo funciona la cadena de dos paneles
 Los dos paneles forman un **único registro de desplazamiento de 128 pasos** por cada color: la salida del panel 1 (OUT) va a la entrada del panel 2 (IN).
 - En cada flanco de subida de CLK, cada paso copia lo que tenía el anterior, y el primer paso toma el valor nuevo de los pines de color.
@@ -7481,6 +7533,8 @@ Lo que cambió respecto al Paso 10 es `pedir_direccion`:
 - El resto del archivo no cambia respecto al Paso 10.
 
 ### Código temporal (no está en el repo)
+> **Nota (2026-11-24):** los programas de medición y de prueba no se guardaron originalmente. En `pruebas/08_orden_serial_paneles` y `pruebas/09_pantalla_32x32` hay una **reconstrucción** hecha a partir del código de esta sección; no se volvió a grabar en la placa con esa reconstrucción (ver `pruebas/README.md`).
+
 Los tres fragmentos siguientes se usaron para medir y comprobar el mapeo. No están en el repo: se reemplazaron por el juego.
 
 `dibujar_fase_de_prueba` (se agregó a `panel.c` y se quitó después; usaba `PANEL_BITS_POR_CADENA = 128`, que también se quitó)
@@ -7677,7 +7731,7 @@ Con esto se descartó el código y la configuración. Daniela probó también el
 - **Ruido en PA8 sin resolver:** la causa física exacta no se conoce. PA8 ya no se usa.
 - **Causa del fallo del shield sin identificar:** Daniela rehízo las conexiones y funcionó. Si el problema reaparece, hay que mirar los jumpers, el GND del shield y los cables del panel cerca de D2 a D7.
 - **La posición física de los botones (A izquierda, B abajo, C derecha, D arriba) se dedujo, no se verificó** con el diseño del shield.
-- **Alimentación:** el 5 V sale del cargador de 3 A, y con dos paneles el consumo máximo con todo en blanco podría pasar de ese valor. Por eso nunca se llenó el panel de color: solo se encienden unos pocos píxeles. Esto es una **estimación** (ver `docs/conexiones.md`); no se midió el consumo.
+- **Alimentación:** el 5 V sale del cargador de 3 A, y con dos paneles el consumo máximo con todo en blanco podría pasar de ese valor. Por eso nunca se llenó el panel de color: solo se encienden unos pocos píxeles. Esto es una **estimación** (ver `docs/conexiones.md`). Después se midió con multímetro solo el caso en rojo (0,65 A a 4,94 V, ver `mediciones/08_alimentacion/README.md`); el consumo con otros colores o en blanco sigue sin medirse.
 - **El tiempo de la interrupción** (~70 %) es una estimación por muestreo.
 - **El costo de `buscar_celda_libre` cerca del tablero lleno** (estimado en el Paso 9 en ~0,35 s en 32×32) no se midió, y ahora `main` corre más lento. Es un caso extremo.
 - **Reiniciar mantenido:** reinicia en cada vuelta mientras se oprime el botón azul, con el parpadeo del Paso 7.
