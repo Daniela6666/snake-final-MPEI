@@ -2,7 +2,7 @@
 
 Mediciones del 2026-11-21 con un osciloscopio Hantek 6022BE (2 canales), con el firmware del juego definitivo (dos paneles encadenados).
 
-**Cada medición es una carpeta independiente**, como las de [`pruebas/`](../../pruebas/README.md): dentro están el **programa** que la analiza (`analizar.py`), su **CSV**, su **gráfica** (PNG) y un **README** que explica cómo funciona el código y por qué se hace así, línea por línea. El código también trae **comentarios en cada línea**, para entenderlo sin abrir el README. Las herramientas que comparten todos (leer el CSV, detectar flancos, agrupar ráfagas, guardar la gráfica) están en [`comun/`](comun/README.md).
+**Cada medición es una carpeta independiente**, como las de [`pruebas/`](../pruebas/README.md): dentro están el **programa** que la analiza (`analizar.py`), su **CSV**, su **gráfica** (PNG) y un **README** que explica cómo funciona el código y por qué se hace así, línea por línea. El código también trae **comentarios en cada línea**, para entenderlo sin abrir el README. Las herramientas que comparten todos (leer el CSV, detectar flancos, agrupar ráfagas, guardar la gráfica) están en [`comun/`](comun/README.md).
 
 ## Cómo ejecutarlos
 

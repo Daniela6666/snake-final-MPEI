@@ -41,7 +41,7 @@ Cada carpeta tiene su propio `README.md` que recorre **todos** los archivos de e
 | [08 Orden serial](08_orden_serial_paneles/README.md) | Cadena de 128 bits, detección de flancos, antirrebote, `dibujar_numero` y el generador aleatorio (LFSR) |
 | [09 Pantalla 32×32](09_pantalla_32x32/README.md) | Dos paneles como una sola pantalla: `modulo`, giro de 180° y botón de reinicio |
 
-> Orden recomendado: 01 → 09, en orden. Los programas de Python de las mediciones se explican aparte, en [`docs/mediciones/`](../docs/mediciones/README.md).
+> Orden recomendado: 01 → 09, en orden. Los programas de Python de las mediciones se explican aparte, en [`mediciones/`](../mediciones/README.md).
 
 ## Preguntas de sustentación (con respuesta)
 
