@@ -38,6 +38,6 @@ make flash    # graba la placa con OpenOCD y el ST-LINK
 | `juego/` | El juego definitivo, con el reloj, el GPIO y los demás módulos |
 | `pruebas/` | Nueve programas de prueba que se grabaron durante el desarrollo, con su explicación línea por línea ([índice](pruebas/README.md)) |
 | `mediciones/` | Mediciones con osciloscopio y multímetro, con los programas de Python que las analizan ([índice](mediciones/README.md)) |
-| `entregables/` | [Video del juego funcionando](entregables/juego_funcionando.mp4) en los dos paneles, con el Joystick Shield |
+| `entregables/` | [Informe IEEE](entregables/informe_IEEE_Snake_P10.pdf), [presentación](entregables/presentacion_Snake_P10.pptx) y [video del juego funcionando](entregables/juego_funcionando.mp4) en los dos paneles |
 | `docs/` | Conexiones, mapeo de píxeles y guía de estudio |
 | `AI_USO.md` | Registro del uso de IA |
